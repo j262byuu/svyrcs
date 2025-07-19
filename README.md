@@ -1,4 +1,4 @@
-# My Personal Guide to Using Restricted Cubic Splines in Complex Survey Data (a.k.a. NHANES)
+# Survey-Weighted Restricted Cubic Splines in R (NHANES Tutorial)
 
 ## Introduction
 Restricted Cubic Splines (RCS) are a great way to model non-linear relationships, especially when simple linear models just don’t cut it. But if you’re working with complex survey data like NHANES, you’ll quickly run into trouble , the usual spline methods don’t know what to do with things like:
@@ -10,6 +10,14 @@ Restricted Cubic Splines (RCS) are a great way to model non-linear relationships
 You need the weights for proper estimation, and the other two are essential for getting valid confidence intervals. 
 
 This little guide walks through my personal workflow for running survey-weighted RCS models with proper variance estimation (yes, Taylor series style). It’s not perfect since I’m not a PhD or anything. So if you spot something off, feel free to open an issue or PR. I’m always learning too.
+
+## Prerequisites
+1. R version: 4.0 or higher (even better with Intel MKL)
+2. Required packages:
+```
+r
+install.packages(c("survey", "rms", "survival", "tidyverse"))
+```
 
 ## Why Use RCS?
 
@@ -32,7 +40,7 @@ Real‑world relationships rarely follow a straight line. For example, the link 
 
 Combining RCS with survey design presents unique challenges:
 
-1. No existing integrated solution: The rms package doesn't handle survey weights; the survey package doesn't have built-in rcs function
+1. No existing integrated solution: The `rms` package doesn't handle survey weights; the `survey` package doesn't have built-in rcs function
 2. Reference value complexity: Need to maintain consistent reference values across weighted and unweighted analyses
 3. Variance estimation: Must properly account for correlation between predictions
 4. Computational burden: Need efficient matrix operations
@@ -139,7 +147,7 @@ V <- vcov(weightedModel)
 Xd <- sweep(X, 2, X0)
 
 # Variance of log hazard ratios: (X-X0)' V (X-X0)
-# This properly accounts for correlation!
+# This properly accounts for correlation between spline terms!
 var_logHR <- rowSums((Xd %*% V) * Xd)
 se_logHR <- sqrt(var_logHR)
 
@@ -210,3 +218,57 @@ cat("Reference value:", round(refValue, 2), "\n")
 cat("Knot locations:", round(knots, 2), "\n")
 cat("Degrees of freedom:", df, "\n")
 ```
+## Common Troubleshooting
+1. Adapting for Logistic Regression
+
+```
+r
+# For binary outcomes:
+weightedModel <- svyglm(
+  outcome ~ exposure_rcs + covariate1 + covariate2 + covariate3,
+  design = surveyDesign,
+  family = quasibinomial()  # For proper variance estimation
+)
+
+# Then change HR to OR in the results:
+OR <- exp(logOR)
+# Everything else stays the same!
+```
+
+2. Different Number of Knots
+
+```
+r
+# For 5 knots (more flexibility):
+knots <- quantile(data$exposure_var, 
+                  probs = c(0.05, 0.275, 0.50, 0.725, 0.95), 
+                  na.rm = TRUE)
+
+# For 4 knots:
+knots <- quantile(data$exposure_var, 
+                  probs = c(0.05, 0.35, 0.65, 0.95), 
+                  na.rm = TRUE)
+
+# Remember: more knots = more flexibility but less stability
+```
+3. Missing Data
+
+```
+# Option 1: Complete case analysis (default)
+surveyDesign <- svydesign(..., data = na.omit(data))
+
+# Option 2: Multiple imputation (recommended)
+# See the survey package vignette on svymi
+```
+
+## Citations
+If you used this guide's svyrcs approach, I would appreciate if you cite this page! Thanks!
+
+## References
+1. **Restricted Cubic Splines**: Harrell FE Jr. *Regression Modeling Strategies*. 2nd ed. Springer; 2015. [doi:10.1007/978-3-319-19425-7](https://doi.org/10.1007/978-3-319-19425-7)
+2. **Survey Package**: Lumley T. *Complex Surveys: A Guide to Analysis Using R*. Wiley; 2010. [doi:10.1002/9780470580066](https://doi.org/10.1002/9780470580066)
+3. **Taylor Series Linearization**: Binder DA. On the variances of asymptotically normal estimators from complex surveys. *International Statistical Review*. 1983;51(3):279-292. [doi:10.2307/1402588](https://doi.org/10.2307/1402588)
+4. **NHANES Analysis Guidelines**: [CDC NHANES Tutorial](https://wwwn.cdc.gov/nchs/nhanes/tutorials/default.aspx)
+
+## Contributing: 
+Found an error? Have a better approach? Please open an issue or submit a PR!
