@@ -48,17 +48,16 @@ Combining RCS with survey design presents unique challenges:
 ## My Solution
 
 ```
-# -------------------------------------------------------------------------
-# Survey weighted restricted cubic spline with proper variance estimation
-# Using Taylor linearization with contrast matrices
-# -------------------------------------------------------------------------
+# Survey-weighted RCS with all 3 reference methods
+# Including corrected p-value calculations
 
 library(survey)
 library(rms)
 library(survival)
 library(tidyverse)
+library(patchwork)
 
-## 1. Setup data distribution for reference values ------------------------
+## 0. Setup datadist ---------------------------------------------------------
 dataDist <- datadist(select(
   data,
   exposure_var, outcome_time, outcome_event,
@@ -66,14 +65,11 @@ dataDist <- datadist(select(
 ))
 options(datadist = "dataDist")
 
-## 2. Define knots for RCS ------------------------------------------------
-# Using Harrell's recommended percentiles for 3 knots
-knots <- quantile(data$exposure_var, probs = c(0.10, 0.50, 0.90), na.rm = TRUE)
+## 1. Define knots and create spline terms -----------------------------------
+knots <- quantile(data$exposure_var, probs = c(.10, .50, .90), na.rm = TRUE)
+data$exposure_varRcs <- rcs(data$exposure_var, knots)
 
-## 3. Create spline terms in the dataset ----------------------------------
-data$exposure_rcs <- rcs(data$exposure_var, knots)
-
-## 4. Create survey design object -----------------------------------------
+## 2. Create survey design ---------------------------------------------------
 surveyDesign <- svydesign(
   id      = ~PSU,
   strata  = ~strata,
@@ -82,10 +78,9 @@ surveyDesign <- svydesign(
   data    = data
 )
 
-# Get design degrees of freedom for proper inference
 df <- survey::degf(surveyDesign)
 
-## 5. Fit survey-weighted model -------------------------------------------
+## 3. Fit survey weighted Cox model ------------------------------------------
 # Example: Cox proportional hazards model
 weightedModel <- svycoxph(
   Surv(outcome_time, outcome_event) ~ 
@@ -93,130 +88,232 @@ weightedModel <- svycoxph(
   design = surveyDesign
 )
 
-## 6. Create prediction grid ----------------------------------------------
-# Grid from 1st to 99th percentiles (avoid sparse extremes)
-grid_values <- seq(
-  quantile(data$exposure_var, 0.01, na.rm = TRUE),
-  quantile(data$exposure_var, 0.99, na.rm = TRUE), 
-  length.out = 500
-)
+## 4. Function to calculate p-values correctly -------------------------------
+calculate_rcs_pvalues <- function(model, var_name = "exposure_var") {
+  
+  # Get coefficient names
+  coef_names <- names(coef(model))
+  
+  # Find RCS terms for the variable
+  rcs_pattern <- paste0(var_name, "Rcs")
+  rcs_terms <- grep(rcs_pattern, coef_names, value = TRUE)
+  
+  if(length(rcs_terms) == 0) {
+    stop("No RCS terms found for ", var_name)
+  }
+  
+  # Get coefficients and variance-covariance matrix
+  all_coef <- coef(model)
+  vcov_mat <- vcov(model)
+  
+  # 1. Overall effect (all RCS terms together)
+  overall_idx <- which(coef_names %in% rcs_terms)
+  overall_coef <- all_coef[overall_idx]
+  overall_vcov <- vcov_mat[overall_idx, overall_idx, drop = FALSE]
+  
+  # Wald test for overall effect
+  overall_wald <- as.numeric(t(overall_coef) %*% solve(overall_vcov) %*% overall_coef)
+  overall_df <- length(overall_idx)
+  overall_pval <- pchisq(overall_wald, df = overall_df, lower.tail = FALSE)
+  
+  # 2. Non-linear effect (excluding first RCS term)
+  if(length(rcs_terms) > 1) {
+    nonlin_idx <- overall_idx[-1]  # Exclude first RCS term
+    nonlin_coef <- all_coef[nonlin_idx]
+    nonlin_vcov <- vcov_mat[nonlin_idx, nonlin_idx, drop = FALSE]
+    
+    # Wald test for non-linearity
+    nonlin_wald <- as.numeric(t(nonlin_coef) %*% solve(nonlin_vcov) %*% nonlin_coef)
+    nonlin_df <- length(nonlin_idx)
+    nonlin_pval <- pchisq(nonlin_wald, df = nonlin_df, lower.tail = FALSE)
+  } else {
+    nonlin_wald <- NA
+    nonlin_df <- 0
+    nonlin_pval <- NA
+  }
+  
+  list(
+    overall = list(chisq = overall_wald, df = overall_df, pvalue = overall_pval),
+    nonlinear = list(chisq = nonlin_wald, df = nonlin_df, pvalue = nonlin_pval)
+  )
+}
 
-# Create prediction dataset
-newData <- data.frame(exposure_var = grid_values)
-newData$exposure_rcs <- rcs(newData$exposure_var, knots)
+# Calculate p-values
+pvals <- calculate_rcs_pvalues(weightedModel, "exposure_var")
+
+## 5. Create prediction grid -------------------------------------------------
+grid_x <- seq(quantile(data$exposure_var, .01, na.rm = TRUE),
+              quantile(data$exposure_var, .99, na.rm = TRUE), 
+              length.out = 500)
+
+newData <- data.frame(exposure_var = grid_x)
+newData$exposure_varRcs <- rcs(newData$exposure_var, knots)
 
 # Set other covariates to reference values
-for (v in setdiff(all.vars(formula(weightedModel)), names(newData))) {
-  if (v %in% names(data)) {
-    if (is.factor(data[[v]])) {
-      # Use mode for factors
-      tbl <- table(data[[v]], useNA = "no")
-      newData[[v]] <- factor(
-        names(sort(tbl, decreasing = TRUE)[1]),
-        levels = levels(data[[v]])
-      )
-    } else if (is.numeric(data[[v]])) {
-      # Use median for continuous
-      newData[[v]] <- median(data[[v]], na.rm = TRUE)
-    }
+for (v in setdiff(names(data), names(newData))) {
+  if (is.factor(data[[v]])) {
+    newData[[v]] <- factor(names(sort(table(data[[v]]), decreasing=TRUE)[1]),
+                           levels(data[[v]]))
+  } else {
+    newData[[v]] <- median(data[[v]], na.rm = TRUE)
   }
 }
 
-## 7. Define reference exposure value -------------------------------------
-# Get reference from datadist (typically median)
-refValue <- dataDist$limits["Adjust to", "exposure_var"]
-refData <- newData[1, , drop = FALSE]
-refData$exposure_var <- refValue
-refData$exposure_rcs <- rcs(refValue, knots)
+## 6. Function to calculate HR with specific reference -----------------------
+calculate_hr <- function(ref_value, ref_name) {
+  refData <- newData[1, , drop = FALSE]
+  refData$exposure_var <- ref_value
+  refData$exposure_varRcs <- rcs(ref_value, knots)
+  
+  # Design matrices
+  tmp <- rbind(newData, refData)
+  mm <- model.matrix(weightedModel, data = tmp)
+  X <- mm[1:nrow(newData), , drop = FALSE]
+  X0 <- mm[nrow(tmp), , drop = FALSE]
+  
+  # Calculate HR with proper variance
+  V <- vcov(weightedModel)
+  Xd <- sweep(X, 2, X0)
+  var_logHR <- rowSums((Xd %*% V) * Xd)
+  se_logHR <- sqrt(var_logHR)
+  
+  lp_grid <- predict(weightedModel, newdata = newData, type = "lp")
+  lp_ref <- as.numeric(predict(weightedModel, newdata = refData, type = "lp"))
+  logHR <- lp_grid - lp_ref
+  
+  crit <- qt(0.975, df)
+  HR <- exp(logHR)
+  lower_CI <- exp(logHR - crit * se_logHR)
+  upper_CI <- exp(logHR + crit * se_logHR)
+  
+  data.frame(
+    exposure_var = newData$exposure_var,
+    HR = HR,
+    lower = lower_CI,
+    upper = upper_CI,
+    method = ref_name,
+    ref_value = ref_value
+  )
+}
 
-## 8. Calculate predictions using contrast matrices -----------------------
-# This is the KEY step for proper variance estimation
+## 7. Find reference values for each method ----------------------------------
 
-# Combine prediction and reference data
-tmp <- rbind(newData, refData)
+# Method 1: Probability-based (median)
+ref_prob <- quantile(data$exposure_var, probs = 0.5, na.rm = TRUE)
 
-# Get model matrices
-mm <- model.matrix(weightedModel, data = tmp)
-X <- mm[1:nrow(newData), , drop = FALSE]    # Prediction points
-X0 <- mm[nrow(tmp), , drop = FALSE]         # Reference point
+# Method 2: Minimum HR as reference 
+temp_hr <- calculate_hr(ref_prob, "temp")
+ref_minimal <- temp_hr$exposure_var[which.min(temp_hr$HR)]
 
-# Get variance-covariance matrix from survey-weighted model
-V <- vcov(weightedModel)
+# Method 3: Maximal HR as reference 
+ref_maximal <- temp_hr$exposure_var[which.max(temp_hr$HR)]
 
-# Calculate contrasts: X - X0
-Xd <- sweep(X, 2, X0)
+## 8. Calculate results for all methods --------------------------------------
+results_prob <- calculate_hr(ref_prob, "Probability (Median)")
+results_minimal <- calculate_hr(ref_minimal, "Minimal Risk")
+results_maximal <- calculate_hr(ref_maximal, "Maximal Risk")
 
-# Variance of log hazard ratios: (X-X0)' V (X-X0)
-# This properly accounts for correlation between spline terms!
-var_logHR <- rowSums((Xd %*% V) * Xd)
-se_logHR <- sqrt(var_logHR)
+all_results <- rbind(results_prob, results_minimal, results_maximal)
 
-# Get linear predictors
-lp_grid <- predict(weightedModel, newdata = newData, type = "lp")
-lp_ref <- as.numeric(predict(weightedModel, newdata = refData, type = "lp"))
-logHR <- lp_grid - lp_ref
+## 9. Create plots for all methods -------------------------------------------
+create_plot <- function(data, title_suffix) {
+  ref_val <- unique(data$ref_value)
+  
+  p <- ggplot(data, aes(x = exposure_var, y = HR)) +
+    geom_line(linewidth = 1.2, color = "black") +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, fill = "blue") +
+    geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
+    geom_vline(xintercept = ref_val, linetype = "dotted", color = "red", alpha = 0.7) +
+    geom_point(x = ref_val, y = 1, size = 3, color = "red") +
+    scale_x_continuous(breaks = seq(0, 14000, by = 2000)) +
+    scale_y_continuous(trans = "log2") +
+    theme_bw() +
+    theme(
+      panel.border = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(colour = "black"),
+      axis.text = element_text(size = 8),
+      axis.title = element_text(size = 10),
+      plot.title = element_text(size = 11)
+    ) +
+    labs(
+      title = paste0(title_suffix, " (Ref: ", round(ref_val, 0), ")"),
+      x = "Exposure",
+      y = "Hazard Ratio (95% CI)"
+    )
+  
+  return(p)
+}
 
-## 9. Calculate confidence intervals --------------------------------------
-# Use t-distribution with survey design degrees of freedom
-crit <- qt(0.975, df)
+# Create individual plots
+p1 <- create_plot(results_prob, "Probability-based (Median)")
+p2 <- create_plot(results_minimal, "Minimal Risk")
+p3 <- create_plot(results_maximal, "Maximal Risk")
 
-# Transform to hazard ratio scale
-HR <- exp(logHR)
-lower_CI <- exp(logHR - crit * se_logHR)
-upper_CI <- exp(logHR + crit * se_logHR)
-
-# Compile results
-results <- data.frame(
-  exposure = newData$exposure_var,
-  HR = HR,
-  lower = lower_CI,
-  upper = upper_CI,
-  se_logHR = se_logHR
-)
-
-## 10. Visualize results --------------------------------------------------
-ggplot(results, aes(x = exposure, y = HR)) +
-  geom_line(size = 1.2, color = "black") +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.2, fill = "blue") +
-  geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
-  # Use log scale for y-axis (recommended for ratios)
-  scale_y_continuous(
-    trans = "log2",
-    breaks = c(0.25, 0.5, 1, 2, 4, 8),
-    labels = c(0.25, 0.5, 1, 2, 4, 8)
-  ) +
-  theme_bw() +
-  theme(
-    panel.border = element_blank(),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.line = element_line(colour = "black"),
-    axis.text = element_text(size = 10),
-    axis.title = element_text(size = 12)
-  ) +
-  labs(
-    x = "Exposure",
-    y = "Hazard Ratio (95% CI)",
+# Combine plots
+combined_plot <- (p1 | p2 | p3) +
+  plot_annotation(
     title = "Non-linear Association",
-    subtitle = sprintf("Survey-weighted Cox model with RCS (3 knots); Taylor series 95%% CI (df=%d)", df)
+    subtitle = paste0("Survey-weighted Cox model with RCS (3 knots); Taylor series 95% CI (df=", df, ")"),
+    theme = theme(plot.title = element_text(size = 14, face = "bold"),
+                  plot.subtitle = element_text(size = 12))
   )
 
-## 11. Report key statistics ----------------------------------------------
-# Hazard ratios at selected exposure values
-key_exposures <- c(10, 25, 50, 75, 90)  # percentiles or meaningful values
-key_indices <- sapply(key_exposures, function(x) which.min(abs(results$exposure - x)))
+print(combined_plot)
 
-summary_table <- results[key_indices, ]
-summary_table$CI_width <- summary_table$upper - summary_table$lower
-print(round(summary_table, 3))
-
-# Model information
-cat("\nModel Summary:\n")
+## 10. Model Summary ---------------------------------------------------------
+cat("\n================== MODEL SUMMARY ==================\n")
 cat("Events:", sum(data$outcome_event, na.rm = TRUE), "\n")
 cat("Observations:", nrow(data), "\n")
-cat("Reference value:", round(refValue, 2), "\n")
-cat("Knot locations:", round(knots, 2), "\n")
 cat("Degrees of freedom:", df, "\n")
+cat("\nKnot locations:", round(knots, 0), "steps/day\n")
+
+cat("\n================== P-VALUES =======================\n")
+cat("Overall effect of exposure_var:\n")
+cat("  Chi-square:", round(pvals$overall$chisq, 2), "\n")
+cat("  d.f.:", pvals$overall$df, "\n")
+cat("  P-value:", format.pval(pvals$overall$pvalue, digits = 4), "\n")
+
+cat("\nNon-linear component:\n")
+cat("  Chi-square:", round(pvals$nonlinear$chisq, 2), "\n")
+cat("  d.f.:", pvals$nonlinear$df, "\n")
+cat("  P-value:", format.pval(pvals$nonlinear$pvalue, digits = 4), "\n")
+
+cat("\n================== REFERENCE VALUES ===============\n")
+cat("Probability (median):", round(ref_prob, 0), "steps/day\n")
+cat("Minimal risk:", round(ref_minimal, 0), "steps/day\n")
+cat("Maximal risk:", round(ref_maximal, 0), "steps/day\n")
+
+cat("\n================== LOWEST/HIGHEST POINTS ==========\n")
+# Find global minimum and maximum HRs across all methods
+global_results <- calculate_hr(ref_prob, "global")
+min_idx <- which.min(global_results$HR)
+max_idx <- which.max(global_results$HR)
+
+cat("Lowest HR point:", round(global_results$exposure_var[min_idx], 0), 
+    "steps/day (HR =", round(global_results$HR[min_idx], 3), ")\n")
+cat("Highest HR point:", round(global_results$exposure_var[max_idx], 0), 
+    "steps/day (HR =", round(global_results$HR[max_idx], 3), ")\n")
+
+cat("\n================== INTERPRETATION =================\n")
+if(pvals$overall$pvalue < 0.05) {
+  cat("exposure_var is significantly associated with mortality (p =", 
+      format.pval(pvals$overall$pvalue, digits = 4), ")\n")
+} else {
+  cat("exposure_var is NOT significantly associated with mortality (p =", 
+      format.pval(pvals$overall$pvalue, digits = 4), ")\n")
+}
+
+if(!is.na(pvals$nonlinear$pvalue) && pvals$nonlinear$pvalue < 0.05) {
+  cat("The relationship is significantly non-linear (p =", 
+      format.pval(pvals$nonlinear$pvalue, digits = 4), ")\n")
+  cat("A flexible model (RCS) is justified over a simple linear model\n")
+} else {
+  cat("The relationship is NOT significantly non-linear (p =", 
+      format.pval(pvals$nonlinear$pvalue, digits = 4), ")\n")
+  cat("A linear model might be sufficient\n")
+}
 ```
 ## Common Troubleshooting
 1. Adapting for Logistic Regression
