@@ -1,0 +1,38 @@
+Package: svyrcs
+Title: Restricted Cubic Splines for Complex Survey Data
+Version: 0.1.0
+Authors@R:
+    person("Xiaoyu", "Zong", , "j262byuu@gmail.com", role = c("aut", "cre"))
+Description: Fits and summarises restricted cubic spline (RCS) models for
+    complex survey data such as the National Health and Nutrition Examination
+    Survey (NHANES). Splines are combined with survey-weighted Cox and
+    generalised linear models from the 'survey' package, and exposure-response
+    curves are estimated as contrasts against a reference value with
+    design-based (Taylor linearisation) variance and confidence intervals on
+    the survey degrees of freedom. Provides tests of overall association and of
+    non-linearity, several ways of choosing the reference value, and
+    publication-ready plots.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.1)
+Imports:
+    ggplot2,
+    rlang,
+    stats,
+    survey (>= 4.0)
+Suggests:
+    haven,
+    knitr,
+    rmarkdown,
+    rms,
+    survival,
+    testthat (>= 3.0.0)
+URL: https://github.com/j262byuu/svyrcs
+BugReports: https://github.com/j262byuu/svyrcs/issues
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+LazyData: true
+LazyDataCompression: xz
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.0.0
