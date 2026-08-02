@@ -56,6 +56,15 @@ Anchor the curve wherever the analysis calls for it:
 svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age, design = design, ref = "min")
 ```
 
+Estimate one curve per subgroup, from a single model, with a test of whether they differ:
+
+```r
+by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+by_sex$tests$interaction   # p for interaction
+by_sex$tests$shape         # does the *curvature* differ, or is the curve just shifted?
+plot(by_sex)               # one coloured curve per group; facet = TRUE to panel them
+```
+
 Any outcome `survey` can fit:
 
 | outcome | call | reports |
@@ -78,6 +87,7 @@ easy to get wrong when doing this by hand:
 | normal quantile for the confidence band | *t* quantile on the design df | a normal quantile gives intervals that are too narrow |
 | knots and reference at unweighted quantiles | survey-weighted quantiles by default | in a design-based analysis the population median is the weighted one; `weighted_knots = FALSE` restores the old behaviour |
 | `rms::rcs()` plus the `datadist` global option | knots stored on the fitted model | `predict()` on new data can never silently re-derive different knots, and there is no global state to keep in sync |
+| subgroup curves from separate stratified fits | one interaction model, curves via a selection matrix | separate fits cannot produce a *p* for interaction, and estimate the covariate effects independently; the matrix form also keeps `Cov(main, interaction)` in the standard error, which adding the two variances would drop |
 
 ## Documentation
 

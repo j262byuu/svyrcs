@@ -1,3 +1,25 @@
+# svyrcs 0.2.0
+
+* `svyrcs()` accepts an interaction between the spline and a grouping variable,
+  `rcs(bmi, 4) * sex`, and returns one curve per group from a single model. Writing the terms the
+  other way round, `sex * rcs(bmi, 4)`, works too.
+* Two effect-modification tests are reported: **Interaction**, whether the association differs
+  between groups at all, and **Shape interaction**, whether the curvature differs as opposed to the
+  whole curve being shifted. The interaction test matches `survey::regTermTest()`. Overall and
+  non-linearity tests are also reported within each group.
+* Group curves are estimated through a selection matrix on the full coefficient vector, so the
+  standard error for a non-reference group correctly includes the covariance between the main and
+  interaction terms.
+* All groups share one reference value so the curves are comparable. `ref = "min"` and `ref = "max"`
+  are located on the reference level's curve, and the output says which level that was.
+* `predict()` gains a `group` argument; `plot()` and `autoplot()` colour by group and gain
+  `facet = TRUE`; `print()` and `summary()` report per-group results.
+* A rank-deficient interaction — the spline collinear with the modifier inside a group, typically
+  when the modifier is derived from the exposure — is now diagnosed as such rather than reported as
+  a missing coefficient.
+* Fits without an interaction are unchanged, and a regression test pins their numbers and printed
+  output.
+
 # svyrcs 0.1.0
 
 First release.

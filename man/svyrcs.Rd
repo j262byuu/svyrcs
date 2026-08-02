@@ -20,7 +20,8 @@ svyrcs(
 \arguments{
 \item{formula}{A model formula containing exactly one \code{\link[=rcs]{rcs()}} term for the exposure, plus any
 covariates. A \code{Surv()} response selects a survey-weighted Cox model; anything else is fitted
-with \code{\link[survey:svyglm]{survey::svyglm()}}.}
+with \code{\link[survey:svyglm]{survey::svyglm()}}. Crossing the spline with a grouping variable, \code{rcs(x, 4) * sex},
+estimates one curve per group and tests whether they differ; see the section below.}
 
 \item{design}{A survey design object, as built by \code{\link[survey:svydesign]{survey::svydesign()}}. Subset it with
 \code{\link[=subset]{subset()}} before passing it in; the degrees of freedom are taken from the design you pass.}
@@ -65,6 +66,26 @@ Fits a restricted cubic spline model to a complex survey design and returns the
 exposure-response curve, its confidence band, tests of overall association and of non-linearity,
 and the reference value the curve is anchored to.
 }
+\section{Subgroups and effect modification}{
+
+Writing the exposure crossed with a grouping variable, \code{rcs(bmi, 4) * sex}, fits \strong{one} model and
+returns one curve per level of the modifier. Because it is a single model, the covariate effects
+are shared across groups and a genuine interaction test is available; fitting each subgroup
+separately gives neither. \code{sex * rcs(bmi, 4)} is equivalent.
+
+The modifier must be a factor, character or logical variable. Two extra tests are then reported:
+\describe{
+\item{Interaction}{Are the spline-by-group terms jointly zero, i.e. does the association differ
+between groups at all?}
+\item{Shape interaction}{The same test without the linear term: does the \emph{curvature} differ, as
+opposed to the whole curve being shifted?}
+}
+plus the overall and non-linearity tests within each group.
+
+All groups share one reference value, so that the curves are comparable; \code{ref = "min"} and
+\code{ref = "max"} are located on the reference level's curve, which the printed output states.
+}
+
 \section{Why not just use \code{rms}}{
 
 \code{rms::rcs()} gives the same basis, but \code{rms} fitting functions do not know about sampling weights,
@@ -94,6 +115,11 @@ plot(fit_hr)
 # binary outcome: odds of high total cholesterol
 fit_or <- svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
                  family = quasibinomial())
+
+# one curve per subgroup, with a test of whether they differ
+fit_by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+fit_by_sex$tests$interaction$p_F
+plot(fit_by_sex)
 }
 
 }

@@ -14,7 +14,8 @@ svyrcs_curve(
   range = NULL,
   level = 0.95,
   design = NULL,
-  degf = NULL
+  degf = NULL,
+  group = NULL
 )
 }
 \arguments{
@@ -43,11 +44,15 @@ survey-weighted percentiles of the exposure.}
 ranges.}
 
 \item{degf}{Design degrees of freedom for the \emph{t} quantile. Defaults to \code{survey::degf(design)}.}
+
+\item{group}{When the spline is interacted with an effect modifier, the level or levels to
+estimate. \code{NULL} (default) returns every level, stacked, with a \code{group} column.}
 }
 \value{
 A data frame of class \code{svyrcs_curve} with columns \code{x}, \code{estimate}, \code{conf.low},
-\code{conf.high} and \code{se} (on the linear-predictor scale), carrying attributes \code{ref}, \code{ref_method},
-\code{measure}, \code{null}, \code{knots}, \code{var}, \code{degf} and \code{level}.
+\code{conf.high} and \code{se} (on the linear-predictor scale), plus \code{group} when the model has an
+effect modifier. Carries attributes \code{ref}, \code{ref_method}, \code{measure}, \code{null}, \code{knots}, \code{var},
+\code{degf}, \code{level} and \code{modifier}.
 }
 \description{
 Estimates the exposure-response curve implied by an \code{rcs()} term in an already-fitted survey
