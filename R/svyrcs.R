@@ -33,6 +33,42 @@ collect_rcs_calls <- function(e, acc = list()) {
   acc
 }
 
+## Build the `tests` component.
+##
+## Without a modifier this is exactly the 0.1.0 pair. With one, `overall` and `nonlinear` widen to
+## the joint test over the spline block *and* its interactions -- "is the exposure associated with
+## the outcome in any group?" -- and the per-group and interaction tests are added alongside. Keeping
+## the same two names in both shapes means code that reads fit$tests$overall keeps working.
+assemble_tests <- function(beta, V, term, modifier, degf) {
+  spline_cols <- spline_colnames(term$label, term$nk)
+
+  if (is.null(modifier)) {
+    L <- selection_matrix(names(beta), spline_cols, NULL)
+    return(group_tests(beta, V, L, degf))
+  }
+
+  int_cols <- unlist(modifier$columns, use.names = FALSE)
+  joint <- c(spline_cols, int_cols)
+  joint_nl <- c(spline_cols[-1L],
+                unlist(lapply(modifier$columns, function(cols) cols[-1L]), use.names = FALSE))
+
+  by_group <- lapply(modifier$levels, function(g) {
+    group_tests(beta, V, selection_matrix(names(beta), spline_cols, modifier$columns[[g]]), degf)
+  })
+  names(by_group) <- modifier$levels
+
+  itests <- interaction_tests(beta, V, modifier, degf)
+
+  list(
+    overall = wald_block(beta[joint], V[joint, joint, drop = FALSE], degf, "overall association"),
+    nonlinear = wald_block(beta[joint_nl], V[joint_nl, joint_nl, drop = FALSE], degf,
+                           "non-linearity"),
+    interaction = itests$interaction,
+    shape = itests$shape,
+    by_group = by_group
+  )
+}
+
 ## Detect a Surv() response, whether written bare or namespace-qualified as survival::Surv().
 is_surv_call <- function(e) {
   if (!is.call(e)) return(FALSE)
@@ -53,7 +89,8 @@ is_surv_call <- function(e) {
 #'
 #' @param formula A model formula containing exactly one [rcs()] term for the exposure, plus any
 #'   covariates. A `Surv()` response selects a survey-weighted Cox model; anything else is fitted
-#'   with [survey::svyglm()].
+#'   with [survey::svyglm()]. Crossing the spline with a grouping variable, `rcs(x, 4) * sex`,
+#'   estimates one curve per group and tests whether they differ; see the section below.
 #' @param design A survey design object, as built by [survey::svydesign()]. Subset it with
 #'   [subset()] before passing it in; the degrees of freedom are taken from the design you pass.
 #' @param family Family for the [survey::svyglm()] path. Use `quasibinomial()` for a binary outcome
@@ -82,6 +119,24 @@ is_surv_call <- function(e) {
 #'     \item{model}{The fitted `svycoxph`/`svyglm` object, for your own diagnostics.}
 #'     \item{degf, n, nevents, level, var, call}{Analysis metadata.}
 #'   }
+#'
+#' @section Subgroups and effect modification:
+#' Writing the exposure crossed with a grouping variable, `rcs(bmi, 4) * sex`, fits **one** model and
+#' returns one curve per level of the modifier. Because it is a single model, the covariate effects
+#' are shared across groups and a genuine interaction test is available; fitting each subgroup
+#' separately gives neither. `sex * rcs(bmi, 4)` is equivalent.
+#'
+#' The modifier must be a factor, character or logical variable. Two extra tests are then reported:
+#' \describe{
+#'   \item{Interaction}{Are the spline-by-group terms jointly zero, i.e. does the association differ
+#'     between groups at all?}
+#'   \item{Shape interaction}{The same test without the linear term: does the *curvature* differ, as
+#'     opposed to the whole curve being shifted?}
+#' }
+#' plus the overall and non-linearity tests within each group.
+#'
+#' All groups share one reference value, so that the curves are comparable; `ref = "min"` and
+#' `ref = "max"` are located on the reference level's curve, which the printed output states.
 #'
 #' @section Why not just use `rms`:
 #' `rms::rcs()` gives the same basis, but `rms` fitting functions do not know about sampling weights,
@@ -113,6 +168,11 @@ is_surv_call <- function(e) {
 #' # binary outcome: odds of high total cholesterol
 #' fit_or <- svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
 #'                  family = quasibinomial())
+#'
+#' # one curve per subgroup, with a test of whether they differ
+#' fit_by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+#' fit_by_sex$tests$interaction$p_F
+#' plot(fit_by_sex)
 #' }
 #'
 #' @export
@@ -186,13 +246,14 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
 
   degf <- survey::degf(design)
   term <- find_rcs_term(model, var)
-  idx <- spline_coef_index(model, term)
-  beta <- stats::coef(model)[idx]
-  V <- stats::vcov(model)[idx, idx, drop = FALSE]
+  spline_coef_index(model, term)  # validates the main effects are present
+  modifier <- find_modifier(model, term)
+  beta <- stats::coef(model)
+  V <- stats::vcov(model)
 
   curve <- svyrcs_curve(model, var = var, ref = ref, ref_prob = ref_prob, n = n, range = range,
                         level = level, design = design, degf = degf)
-  tests <- rcs_tests(beta, V, degf)
+  tests <- assemble_tests(beta, V, term, modifier, degf)
   meas <- effect_measure(model)
 
   ## nobs() on a coxph object returns the number of *events* (its effective sample size for AIC),
@@ -207,6 +268,9 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
       ref = list(value = attr(curve, "ref"), method = attr(curve, "ref_method")),
       knots = knots,
       nk = length(knots),
+      groups = if (is.null(modifier)) NULL else {
+        list(var = modifier$var, levels = modifier$levels, ref_level = modifier$ref_level)
+      },
       var = var,
       label = paste0("rcs(", var, ", ", length(knots), ")"),
       ## The term exactly as it appears in the fitted model, so that
