@@ -42,3 +42,41 @@ rcs_tests <- function(beta, V, degf) {
   }
   list(overall = overall, nonlinear = nonlinear)
 }
+
+## The same two tests for one group, working from the full coefficient vector through that group's
+## selection matrix. b_g = L beta and V_g = L V L' carry the main-interaction covariance.
+group_tests <- function(beta, V, L, degf) {
+  b <- as.numeric(L %*% beta)
+  Vg <- L %*% V %*% t(L)
+  rcs_tests(b, Vg, degf)
+}
+
+## Effect-modification tests.
+##
+## `interaction` asks whether the association differs between groups at all. `shape` drops the
+## linear interaction column for each level, so it asks the narrower and usually more interesting
+## question: does the *curvature* differ, as opposed to the whole curve being shifted?
+interaction_tests <- function(beta, V, modifier, degf) {
+  int_cols <- unlist(modifier$columns, use.names = FALSE)
+  shape_cols <- unlist(lapply(modifier$columns, function(cols) cols[-1L]), use.names = FALSE)
+
+  missing <- setdiff(c(int_cols, shape_cols), names(beta))
+  if (length(missing)) {
+    stop_svyrcs("interaction coefficients missing from the model: ",
+                paste(sQuote(missing), collapse = ", "))
+  }
+
+  shape <- if (length(shape_cols)) {
+    wald_block(beta[shape_cols], V[shape_cols, shape_cols, drop = FALSE], degf,
+               "shape interaction")
+  } else {
+    list(chisq = NA_real_, F = NA_real_, df1 = 0L, df2 = degf,
+         p_chisq = NA_real_, p_F = NA_real_)
+  }
+
+  list(
+    interaction = wald_block(beta[int_cols], V[int_cols, int_cols, drop = FALSE], degf,
+                             "interaction"),
+    shape = shape
+  )
+}
