@@ -13,6 +13,7 @@
   rug = FALSE,
   band_alpha = 0.2,
   colour = "#2C6E9B",
+  facet = FALSE,
   ...
 )
 
@@ -27,7 +28,11 @@
 
 \item{band_alpha}{Opacity of the confidence band.}
 
-\item{colour}{Colour for the curve and the band.}
+\item{colour}{Colour for the curve and the band. Ignored when the fit has an effect modifier, in
+which case groups are coloured by the default discrete scale.}
+
+\item{facet}{For a fit with an effect modifier, \code{TRUE} puts each group in its own panel instead of
+overlaying them.}
 
 \item{...}{Ignored.}
 

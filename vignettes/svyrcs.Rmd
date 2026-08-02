@@ -156,6 +156,50 @@ Use `quasipoisson()` for rates, which gives rate ratios. The quasi- families are
 under a survey design: the dispersion parameter is not meaningful when the "counts" are weighted, and
 `survey` handles the variance itself.
 
+## Does the curve differ by subgroup?
+
+Cross the spline with a grouping variable and `svyrcs()` fits **one** model, returning a curve per
+group:
+
+```{r subgroup}
+by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+by_sex
+```
+
+```{r subgroup-plot}
+plot(by_sex, xlab = "Body mass index (kg/m²)")
+```
+
+Two questions get separate answers. **Interaction** asks whether the association differs between
+groups at all. **Shape interaction** drops the linear interaction term, so it asks the narrower
+question: does the *curvature* differ, or is one curve simply a shifted copy of the other?
+
+Here neither is close to significant, and that is worth dwelling on. The two curves in the figure
+look different — the minimum sits a couple of BMI units higher in women, and the male curve climbs
+sooner — but with 31 design degrees of freedom that separation is well inside the noise. Reporting
+"the association was stronger in men" from this fit would not be supported. Subgroup curves are easy
+to over-read, which is exactly why the interaction *p*-value is printed next to them.
+
+`facet = TRUE` gives each group its own panel when the bands overlap too much to read:
+
+```{r subgroup-facet, fig.height = 3.4}
+plot(by_sex, facet = TRUE, xlab = "Body mass index (kg/m²)")
+```
+
+Some details worth knowing:
+
+* One model, not several. Covariate effects — `age` here — are shared across groups. Fitting each
+  subgroup separately would estimate them independently and could not produce an interaction test at
+  all.
+* All groups share one reference value, so the curves are comparable. With `ref = "min"` the
+  reference is the minimum-risk point of the *reference level*, and the output names it.
+* The standard error for a non-reference group accounts for the covariance between the main and
+  interaction coefficients. Adding the two variances separately, which is the obvious shortcut,
+  gives the wrong interval.
+* The modifier must be a factor, character or logical. Continuous effect modification is not
+  supported.
+* `predict(fit, x = ..., group = "Female")` gives numbers for one group.
+
 ## Knots
 
 Four knots at Harrell's recommended quantiles is the default, and is a reasonable choice for most
@@ -216,8 +260,8 @@ Confidence intervals then use a *t* quantile on `degf(design)` rather than a nor
 * Negative binomial outcomes are not supported: `survey` has no such family. Use `quasipoisson()`,
   whose variance is estimated from the design anyway.
 * One spline exposure per model. Fit separate models, or use `svyrcs_curve()` on your own fit.
-* No interaction or subgroup splines yet — a curve that varies by a modifier. Fit within subgroups
-  with `subset(design, ...)` in the meantime.
+* Effect modification by a *continuous* variable, and three-way interactions, are not supported.
+  Group modifiers are (see above).
 * Multiply imputed designs (`svyimputationList`) are not handled.
 * Analyses of a subsample with its own weight (for instance the NHANES fasting subsample) need that
   subsample's weight in `svydesign()`; the shipped data carries only the MEC exam weight.

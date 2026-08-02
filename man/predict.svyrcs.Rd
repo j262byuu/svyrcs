@@ -4,7 +4,7 @@
 \alias{predict.svyrcs}
 \title{Effect estimates at specific exposure values}
 \usage{
-\method{predict}{svyrcs}(object, x, ref = NULL, level = NULL, ...)
+\method{predict}{svyrcs}(object, x, ref = NULL, level = NULL, group = NULL, ...)
 }
 \arguments{
 \item{object}{An object from \code{\link[=svyrcs]{svyrcs()}}.}
@@ -16,10 +16,14 @@ supply a number to compare against a different value without refitting.}
 
 \item{level}{Confidence level. Defaults to the level used by the fit.}
 
+\item{group}{For a fit with an effect modifier, the level or levels wanted. \code{NULL} (default)
+returns every level.}
+
 \item{...}{Ignored.}
 }
 \value{
-A data frame with columns \code{x}, \code{estimate}, \code{conf.low}, \code{conf.high} and \code{se}.
+A data frame with columns \code{x}, \code{estimate}, \code{conf.low}, \code{conf.high} and \code{se}, plus \code{group}
+when the fit has an effect modifier.
 }
 \description{
 Gives the estimated effect, with confidence interval, at exposure values you choose, rather than
