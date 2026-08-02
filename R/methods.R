@@ -34,15 +34,20 @@ significant_ranges <- function(curve, null) {
   res[order(res$from), , drop = FALSE]
 }
 
-curve_features <- function(object) {
-  cv <- object$curve
-  imin <- which.min(cv$estimate)
-  imax <- which.max(cv$estimate)
+features_for <- function(cv, null) {
   list(
-    min = cv[imin, , drop = FALSE],
-    max = cv[imax, , drop = FALSE],
-    significant = significant_ranges(cv, object$null)
+    min = cv[which.min(cv$estimate), , drop = FALSE],
+    max = cv[which.max(cv$estimate), , drop = FALSE],
+    significant = significant_ranges(cv, null)
   )
+}
+
+## For a grouped fit, one feature block per level, in level order.
+curve_features <- function(object) {
+  cv <- as.data.frame(object$curve)
+  if (is.null(object$groups)) return(features_for(cv, object$null))
+  out <- lapply(object$groups$levels, function(g) features_for(cv[cv$group == g, ], object$null))
+  stats::setNames(out, object$groups$levels)
 }
 
 fmt_effect <- function(row, measure, digits = 3) {
@@ -68,6 +73,10 @@ print.svyrcs <- function(x, ...) {
   cat(sprintf("  Exposure   %s, %d knots at %s%s\n", x$var, x$nk,
               paste(fmt_num(x$knots, 4), collapse = ", "),
               if (isTRUE(x$weighted_knots)) " (weighted quantiles)" else ""))
+  if (!is.null(x$groups)) {
+    cat(sprintf("  Modifier   %s, %d levels, reference %s\n", x$groups$var,
+                length(x$groups$levels), x$groups$ref_level))
+  }
   cat(sprintf("  Sample     %s observations%s, %d design df\n",
               format(x$n, big.mark = ","),
               if (!is.na(x$nevents)) paste0(", ", format(x$nevents, big.mark = ","), " events") else "",
@@ -81,6 +90,18 @@ print.svyrcs <- function(x, ...) {
   cat("\n")
   cat(fmt_test(x$tests$overall, "Overall association"), "\n")
   cat(fmt_test(x$tests$nonlinear, "Non-linearity"), "\n")
+
+  if (!is.null(x$groups)) {
+    cat(fmt_test(x$tests$interaction, "Interaction"), "\n")
+    cat(fmt_test(x$tests$shape, "Shape interaction"), "\n")
+    width <- max(nchar(x$groups$levels), nchar("Per group"))
+    cat(sprintf("\n  %-*s  %11s  %11s\n", width, "Per group", "overall p", "non-linear p"))
+    for (g in x$groups$levels) {
+      tt <- x$tests$by_group[[g]]
+      cat(sprintf("  %-*s  %11s  %11s\n", width, g,
+                  fmt_p(tt$overall$p_F), fmt_p(tt$nonlinear$p_F)))
+    }
+  }
   invisible(x)
 }
 
@@ -112,28 +133,39 @@ summary.svyrcs <- function(object, ...) {
   )
 }
 
-#' @export
-print.summary.svyrcs <- function(x, ...) {
-  fit <- x$fit
-  print(fit)
-  f <- x$features
-  cat("\n  Curve shape\n")
-  cat(sprintf("    Lowest    %s = %s,  %s\n", fit$var, fmt_num(f$min$x, 4),
+print_features <- function(f, fit, indent = "    ") {
+  cat(sprintf("%sLowest    %s = %s,  %s\n", indent, fit$var, fmt_num(f$min$x, 4),
               fmt_effect(f$min, fit$measure)))
-  cat(sprintf("    Highest   %s = %s,  %s\n", fit$var, fmt_num(f$max$x, 4),
+  cat(sprintf("%sHighest   %s = %s,  %s\n", indent, fit$var, fmt_num(f$max$x, 4),
               fmt_effect(f$max, fit$measure)))
 
   sig <- f$significant
   if (!nrow(sig)) {
-    cat(sprintf("    The %g%% band includes %s = %s across the whole range\n",
-                100 * fit$level, fit$measure, format(fit$null)))
+    cat(sprintf("%sThe %g%% band includes %s = %s across the whole range\n",
+                indent, 100 * fit$level, fit$measure, format(fit$null)))
   } else {
-    cat(sprintf("    %g%% band excludes %s = %s over:\n", 100 * fit$level, fit$measure,
+    cat(sprintf("%s%g%% band excludes %s = %s over:\n", indent, 100 * fit$level, fit$measure,
                 format(fit$null)))
     for (i in seq_len(nrow(sig))) {
-      cat(sprintf("      %s %s to %s  (%s %s %s)\n", fit$var,
+      cat(sprintf("%s  %s %s to %s  (%s %s %s)\n", indent, fit$var,
                   fmt_num(sig$from[i], 4), fmt_num(sig$to[i], 4), fit$measure,
                   if (sig$direction[i] == "above") ">" else "<", format(fit$null)))
+    }
+  }
+}
+
+#' @export
+print.summary.svyrcs <- function(x, ...) {
+  fit <- x$fit
+  print(fit)
+
+  if (is.null(fit$groups)) {
+    cat("\n  Curve shape\n")
+    print_features(x$features, fit)
+  } else {
+    for (g in fit$groups$levels) {
+      cat(sprintf("\n  Curve shape: %s = %s\n", fit$groups$var, g))
+      print_features(x$features[[g]], fit)
     }
   }
   invisible(x)
@@ -150,9 +182,12 @@ print.summary.svyrcs <- function(x, ...) {
 #' @param ref Reference value to contrast against. Defaults to the reference the fit was anchored to;
 #'   supply a number to compare against a different value without refitting.
 #' @param level Confidence level. Defaults to the level used by the fit.
+#' @param group For a fit with an effect modifier, the level or levels wanted. `NULL` (default)
+#'   returns every level.
 #' @param ... Ignored.
 #'
-#' @return A data frame with columns `x`, `estimate`, `conf.low`, `conf.high` and `se`.
+#' @return A data frame with columns `x`, `estimate`, `conf.low`, `conf.high` and `se`, plus `group`
+#'   when the fit has an effect modifier.
 #'
 #' @examples
 #' design <- survey::svydesign(
@@ -168,7 +203,7 @@ print.summary.svyrcs <- function(x, ...) {
 #' predict(fit, x = c(20, 30, 35), ref = 25)
 #'
 #' @export
-predict.svyrcs <- function(object, x, ref = NULL, level = NULL, ...) {
+predict.svyrcs <- function(object, x, ref = NULL, level = NULL, group = NULL, ...) {
   if (missing(x) || !is.numeric(x) || !length(x)) {
     stop_svyrcs("`x` must be a non-empty numeric vector of exposure values")
   }
@@ -179,7 +214,8 @@ predict.svyrcs <- function(object, x, ref = NULL, level = NULL, ...) {
     at = x,
     level = level %||% object$level,
     design = fit_design(object$model),
-    degf = object$degf
+    degf = object$degf,
+    group = group
   )
 }
 
