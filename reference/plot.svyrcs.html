@@ -13,7 +13,7 @@ are drawn on a linear axis."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,6 +59,7 @@ are drawn on a linear axis.</p>
 <span>  rug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  band_alpha <span class="op">=</span> <span class="fl">0.2</span>,</span>
 <span>  colour <span class="op">=</span> <span class="st">"#2C6E9B"</span>,</span>
+<span>  facet <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -87,7 +88,13 @@ are drawn on a linear axis.</p>
 
 
 <dt id="arg-colour">colour<a class="anchor" aria-label="anchor" href="#arg-colour"></a></dt>
-<dd><p>Colour for the curve and the band.</p></dd>
+<dd><p>Colour for the curve and the band. Ignored when the fit has an effect modifier, in
+which case groups are coloured by the default discrete scale.</p></dd>
+
+
+<dt id="arg-facet">facet<a class="anchor" aria-label="anchor" href="#arg-facet"></a></dt>
+<dd><p>For a fit with an effect modifier, <code>TRUE</code> puts each group in its own panel instead of
+overlaying them.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

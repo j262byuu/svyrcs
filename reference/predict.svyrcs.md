@@ -9,7 +9,7 @@ a paper reports, say, the hazard ratio at a BMI of 30 against a BMI of
 
 ``` r
 # S3 method for class 'svyrcs'
-predict(object, x, ref = NULL, level = NULL, ...)
+predict(object, x, ref = NULL, level = NULL, group = NULL, ...)
 ```
 
 ## Arguments
@@ -33,6 +33,11 @@ predict(object, x, ref = NULL, level = NULL, ...)
 
   Confidence level. Defaults to the level used by the fit.
 
+- group:
+
+  For a fit with an effect modifier, the level or levels wanted. `NULL`
+  (default) returns every level.
+
 - ...:
 
   Ignored.
@@ -40,7 +45,7 @@ predict(object, x, ref = NULL, level = NULL, ...)
 ## Value
 
 A data frame with columns `x`, `estimate`, `conf.low`, `conf.high` and
-`se`.
+`se`, plus `group` when the fit has an effect modifier.
 
 ## Examples
 

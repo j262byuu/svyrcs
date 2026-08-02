@@ -32,6 +32,9 @@ svyrcs(
   [`Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) response
   selects a survey-weighted Cox model; anything else is fitted with
   [`survey::svyglm()`](https://rdrr.io/pkg/survey/man/svyglm.html).
+  Crossing the spline with a grouping variable, `rcs(x, 4) * sex`,
+  estimates one curve per group and tests whether they differ; see the
+  section below.
 
 - design:
 
@@ -121,6 +124,34 @@ An object of class `svyrcs`, a list with components:
 
   Analysis metadata.
 
+## Subgroups and effect modification
+
+Writing the exposure crossed with a grouping variable,
+`rcs(bmi, 4) * sex`, fits **one** model and returns one curve per level
+of the modifier. Because it is a single model, the covariate effects are
+shared across groups and a genuine interaction test is available;
+fitting each subgroup separately gives neither. `sex * rcs(bmi, 4)` is
+equivalent.
+
+The modifier must be a factor, character or logical variable. Two extra
+tests are then reported:
+
+- Interaction:
+
+  Are the spline-by-group terms jointly zero, i.e. does the association
+  differ between groups at all?
+
+- Shape interaction:
+
+  The same test without the linear term: does the *curvature* differ, as
+  opposed to the whole curve being shifted?
+
+plus the overall and non-linearity tests within each group.
+
+All groups share one reference value, so that the curves are comparable;
+`ref = "min"` and `ref = "max"` are located on the reference level's
+curve, which the printed output states.
+
 ## Why not just use `rms`
 
 [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) gives the
@@ -191,5 +222,12 @@ plot(fit_hr)
 # binary outcome: odds of high total cholesterol
 fit_or <- svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
                  family = quasibinomial())
+
+# one curve per subgroup, with a test of whether they differ
+fit_by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+fit_by_sex$tests$interaction$p_F
+#> [1] 0.4796278
+plot(fit_by_sex)
+
 # }
 ```

@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -96,6 +96,12 @@
 <p>Anchor the curve wherever the analysis calls for it:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span>, ref <span class="op">=</span> <span class="st">"min"</span><span class="op">)</span></span></code></pre></div>
+<p>Estimate one curve per subgroup, from a single model, with a test of whether they differ:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">by_sex</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">*</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span>
+<span><span class="va">by_sex</span><span class="op">$</span><span class="va">tests</span><span class="op">$</span><span class="va">interaction</span>   <span class="co"># p for interaction</span></span>
+<span><span class="va">by_sex</span><span class="op">$</span><span class="va">tests</span><span class="op">$</span><span class="va">shape</span>         <span class="co"># does the *curvature* differ, or is the curve just shifted?</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">by_sex</span><span class="op">)</span>               <span class="co"># one coloured curve per group; facet = TRUE to panel them</span></span></code></pre></div>
 <p>Any outcome <code>survey</code> can fit:</p>
 <table class="table">
 <colgroup>
@@ -189,6 +195,11 @@
 <td>
 <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> on new data can never silently re-derive different knots, and there is no global state to keep in sync</td>
 </tr>
+<tr>
+<td>subgroup curves from separate stratified fits</td>
+<td>one interaction model, curves via a selection matrix</td>
+<td>separate fits cannot produce a <em>p</em> for interaction, and estimate the covariate effects independently; the matrix form also keeps <code>Cov(main, interaction)</code> in the standard error, which adding the two variances would drop</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -202,7 +213,7 @@
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
 <p>If this package was useful, please cite it:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"svyrcs"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">

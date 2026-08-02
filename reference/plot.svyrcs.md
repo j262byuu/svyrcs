@@ -18,6 +18,7 @@ autoplot(
   rug = FALSE,
   band_alpha = 0.2,
   colour = "#2C6E9B",
+  facet = FALSE,
   ...
 )
 
@@ -47,7 +48,14 @@ plot(x, ...)
 
 - colour:
 
-  Colour for the curve and the band.
+  Colour for the curve and the band. Ignored when the fit has an effect
+  modifier, in which case groups are coloured by the default discrete
+  scale.
+
+- facet:
+
+  For a fit with an effect modifier, `TRUE` puts each group in its own
+  panel instead of overlaying them.
 
 - ...:
 

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -290,12 +290,78 @@ dispersion parameter is not meaningful when the “counts” are weighted,
 and <code>survey</code> handles the variance itself.</p>
 </div>
 <div class="section level2">
+<h2 id="does-the-curve-differ-by-subgroup">Does the curve differ by subgroup?<a class="anchor" aria-label="anchor" href="#does-the-curve-differ-by-subgroup"></a>
+</h2>
+<p>Cross the spline with a grouping variable and <code><a href="../reference/svyrcs.html">svyrcs()</a></code>
+fits <strong>one</strong> model, returning a curve per group:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">by_sex</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">*</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span>
+<span><span class="va">by_sex</span></span>
+<span><span class="co">#&gt; Restricted cubic spline on a complex survey design</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Model      survey-weighted Cox proportional hazards</span></span>
+<span><span class="co">#&gt;   Outcome    Surv(time, event)</span></span>
+<span><span class="co">#&gt;   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)</span></span>
+<span><span class="co">#&gt;   Modifier   sex, 2 levels, reference Male</span></span>
+<span><span class="co">#&gt;   Sample     10,617 observations, 1,893 events, 31 design df</span></span>
+<span><span class="co">#&gt;   Reference  bmi = 27.35 (weighted median), HR = 1</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Overall association  F = 26.40 on 6 and 31 df,  p = 6.78e-11 </span></span>
+<span><span class="co">#&gt;   Non-linearity        F = 29.46 on 4 and 31 df,  p = 3.64e-10 </span></span>
+<span><span class="co">#&gt;   Interaction          F = 0.8453 on 3 and 31 df,  p = 0.48 </span></span>
+<span><span class="co">#&gt;   Shape interaction    F = 1.267 on 2 and 31 df,  p = 0.296 </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Per group    overall p  non-linear p</span></span>
+<span><span class="co">#&gt;   Male          2.92e-06     3.49e-06</span></span>
+<span><span class="co">#&gt;   Female        7.94e-06     5.05e-06</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">by_sex</span>, xlab <span class="op">=</span> <span class="st">"Body mass index (kg/m²)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="svyrcs_files/figure-html/subgroup-plot-1.png" class="r-plt" alt="" width="715"></p>
+<p>Two questions get separate answers. <strong>Interaction</strong> asks
+whether the association differs between groups at all. <strong>Shape
+interaction</strong> drops the linear interaction term, so it asks the
+narrower question: does the <em>curvature</em> differ, or is one curve
+simply a shifted copy of the other?</p>
+<p>Here neither is close to significant, and that is worth dwelling on.
+The two curves in the figure look different — the minimum sits a couple
+of BMI units higher in women, and the male curve climbs sooner — but
+with 31 design degrees of freedom that separation is well inside the
+noise. Reporting “the association was stronger in men” from this fit
+would not be supported. Subgroup curves are easy to over-read, which is
+exactly why the interaction <em>p</em>-value is printed next to
+them.</p>
+<p><code>facet = TRUE</code> gives each group its own panel when the
+bands overlap too much to read:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">by_sex</span>, facet <span class="op">=</span> <span class="cn">TRUE</span>, xlab <span class="op">=</span> <span class="st">"Body mass index (kg/m²)"</span><span class="op">)</span></span></code></pre></div>
+<p><img src="svyrcs_files/figure-html/subgroup-facet-1.png" class="r-plt" alt="" width="715"></p>
+<p>Some details worth knowing:</p>
+<ul>
+<li>One model, not several. Covariate effects — <code>age</code> here —
+are shared across groups. Fitting each subgroup separately would
+estimate them independently and could not produce an interaction test at
+all.</li>
+<li>All groups share one reference value, so the curves are comparable.
+With <code>ref = "min"</code> the reference is the minimum-risk point of
+the <em>reference level</em>, and the output names it.</li>
+<li>The standard error for a non-reference group accounts for the
+covariance between the main and interaction coefficients. Adding the two
+variances separately, which is the obvious shortcut, gives the wrong
+interval.</li>
+<li>The modifier must be a factor, character or logical. Continuous
+effect modification is not supported.</li>
+<li>
+<code>predict(fit, x = ..., group = "Female")</code> gives numbers
+for one group.</li>
+</ul>
+</div>
+<div class="section level2">
 <h2 id="knots">Knots<a class="anchor" aria-label="anchor" href="#knots"></a>
 </h2>
 <p>Four knots at Harrell’s recommended quantiles is the default, and is
 a reasonable choice for most sample sizes. More knots buy flexibility at
 the cost of stability.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">knots</span></span>
 <span><span class="co">#&gt; [1] 19.78 25.22 29.71 40.67</span></span>
 <span><span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">5</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span><span class="op">$</span><span class="va">knots</span></span>
@@ -309,7 +375,7 @@ you would get from a naive script.</p>
 <p>Whatever you choose, the knots are stored on the fitted model, so
 predictions on new data can never be made against silently re-derived
 knots:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">knots</span></span>
 <span><span class="co">#&gt; [1] 19.78 25.22 29.71 40.67</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/terms.html" class="external-link">terms</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span><span class="op">)</span>, <span class="st">"predvars"</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
@@ -321,7 +387,7 @@ knots:</p>
 <p>If you need a specification <code><a href="../reference/svyrcs.html">svyrcs()</a></code> does not build — a
 stratified Cox model, an unusual family, extra arguments — fit it
 yourself and hand it over:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svycoxph.html" class="external-link">svycoxph</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/pkg/survival/man/strata.html" class="external-link">strata</a></span><span class="op">(</span><span class="va">sex</span><span class="op">)</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/svyrcs_curve.html">svyrcs_curve</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"bmi"</span>, ref <span class="op">=</span> <span class="st">"min"</span>, n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         x estimate conf.low conf.high         se</span></span>
@@ -364,9 +430,8 @@ has no such family. Use <code><a href="https://rdrr.io/r/stats/family.html" clas
 estimated from the design anyway.</li>
 <li>One spline exposure per model. Fit separate models, or use
 <code><a href="../reference/svyrcs_curve.html">svyrcs_curve()</a></code> on your own fit.</li>
-<li>No interaction or subgroup splines yet — a curve that varies by a
-modifier. Fit within subgroups with <code>subset(design, ...)</code> in
-the meantime.</li>
+<li>Effect modification by a <em>continuous</em> variable, and three-way
+interactions, are not supported. Group modifiers are (see above).</li>
 <li>Multiply imputed designs (<code>svyimputationList</code>) are not
 handled.</li>
 <li>Analyses of a subsample with its own weight (for instance the NHANES

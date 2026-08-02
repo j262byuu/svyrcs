@@ -11,7 +11,7 @@ and the reference value the curve is anchored to."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -68,7 +68,8 @@ and the reference value the curve is anchored to.</p>
 <dl><dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
 <dd><p>A model formula containing exactly one <code><a href="rcs.html">rcs()</a></code> term for the exposure, plus any
 covariates. A <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv()</a></code> response selects a survey-weighted Cox model; anything else is fitted
-with <code><a href="https://rdrr.io/pkg/survey/man/svyglm.html" class="external-link">survey::svyglm()</a></code>.</p></dd>
+with <code><a href="https://rdrr.io/pkg/survey/man/svyglm.html" class="external-link">survey::svyglm()</a></code>. Crossing the spline with a grouping variable, <code>rcs(x, 4) * sex</code>,
+estimates one curve per group and tests whether they differ; see the section below.</p></dd>
 
 
 <dt id="arg-design">design<a class="anchor" aria-label="anchor" href="#arg-design"></a></dt>
@@ -141,6 +142,27 @@ always used as given.</p></dd>
 
 </dl></div>
     <div class="section level2">
+    <h2 id="subgroups-and-effect-modification">Subgroups and effect modification<a class="anchor" aria-label="anchor" href="#subgroups-and-effect-modification"></a></h2>
+
+
+<p>Writing the exposure crossed with a grouping variable, <code>rcs(bmi, 4) * sex</code>, fits <strong>one</strong> model and
+returns one curve per level of the modifier. Because it is a single model, the covariate effects
+are shared across groups and a genuine interaction test is available; fitting each subgroup
+separately gives neither. <code>sex * rcs(bmi, 4)</code> is equivalent.</p>
+<p>The modifier must be a factor, character or logical variable. Two extra tests are then reported:</p><dl><dt>Interaction</dt>
+<dd><p>Are the spline-by-group terms jointly zero, i.e. does the association differ
+between groups at all?</p></dd>
+
+<dt>Shape interaction</dt>
+<dd><p>The same test without the linear term: does the <em>curvature</em> differ, as
+opposed to the whole curve being shifted?</p></dd>
+
+
+</dl><p>plus the overall and non-linearity tests within each group.</p>
+<p>All groups share one reference value, so that the curves are comparable; <code>ref = "min"</code> and
+<code>ref = "max"</code> are located on the reference level's curve, which the printed output states.</p>
+    </div>
+    <div class="section level2">
     <h2 id="why-not-just-use-rms">Why not just use <code>rms</code><a class="anchor" aria-label="anchor" href="#why-not-just-use-rms"></a></h2>
 
 
@@ -206,6 +228,13 @@ band uses Taylor linearisation on the design degrees of freedom.</p>
 <span class="r-in"><span><span class="co"># binary outcome: odds of high total cholesterol</span></span></span>
 <span class="r-in"><span><span class="va">fit_or</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="va">high_chol</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span>,</span></span>
 <span class="r-in"><span>                 family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">quasibinomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># one curve per subgroup, with a test of whether they differ</span></span></span>
+<span class="r-in"><span><span class="va">fit_by_sex</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">*</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit_by_sex</span><span class="op">$</span><span class="va">tests</span><span class="op">$</span><span class="va">interaction</span><span class="op">$</span><span class="va">p_F</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.4796278</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit_by_sex</span><span class="op">)</span></span></span>
+<span class="r-plt img"><img src="svyrcs-2.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

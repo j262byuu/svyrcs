@@ -247,6 +247,81 @@ which gives rate ratios. The quasi- families are the right choice under
 a survey design: the dispersion parameter is not meaningful when the
 “counts” are weighted, and `survey` handles the variance itself.
 
+## Does the curve differ by subgroup?
+
+Cross the spline with a grouping variable and
+[`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md) fits
+**one** model, returning a curve per group:
+
+``` r
+
+by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+by_sex
+#> Restricted cubic spline on a complex survey design
+#> 
+#>   Model      survey-weighted Cox proportional hazards
+#>   Outcome    Surv(time, event)
+#>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)
+#>   Modifier   sex, 2 levels, reference Male
+#>   Sample     10,617 observations, 1,893 events, 31 design df
+#>   Reference  bmi = 27.35 (weighted median), HR = 1
+#> 
+#>   Overall association  F = 26.40 on 6 and 31 df,  p = 6.78e-11 
+#>   Non-linearity        F = 29.46 on 4 and 31 df,  p = 3.64e-10 
+#>   Interaction          F = 0.8453 on 3 and 31 df,  p = 0.48 
+#>   Shape interaction    F = 1.267 on 2 and 31 df,  p = 0.296 
+#> 
+#>   Per group    overall p  non-linear p
+#>   Male          2.92e-06     3.49e-06
+#>   Female        7.94e-06     5.05e-06
+```
+
+``` r
+
+plot(by_sex, xlab = "Body mass index (kg/m²)")
+```
+
+![](svyrcs_files/figure-html/subgroup-plot-1.png)
+
+Two questions get separate answers. **Interaction** asks whether the
+association differs between groups at all. **Shape interaction** drops
+the linear interaction term, so it asks the narrower question: does the
+*curvature* differ, or is one curve simply a shifted copy of the other?
+
+Here neither is close to significant, and that is worth dwelling on. The
+two curves in the figure look different — the minimum sits a couple of
+BMI units higher in women, and the male curve climbs sooner — but with
+31 design degrees of freedom that separation is well inside the noise.
+Reporting “the association was stronger in men” from this fit would not
+be supported. Subgroup curves are easy to over-read, which is exactly
+why the interaction *p*-value is printed next to them.
+
+`facet = TRUE` gives each group its own panel when the bands overlap too
+much to read:
+
+``` r
+
+plot(by_sex, facet = TRUE, xlab = "Body mass index (kg/m²)")
+```
+
+![](svyrcs_files/figure-html/subgroup-facet-1.png)
+
+Some details worth knowing:
+
+- One model, not several. Covariate effects — `age` here — are shared
+  across groups. Fitting each subgroup separately would estimate them
+  independently and could not produce an interaction test at all.
+- All groups share one reference value, so the curves are comparable.
+  With `ref = "min"` the reference is the minimum-risk point of the
+  *reference level*, and the output names it.
+- The standard error for a non-reference group accounts for the
+  covariance between the main and interaction coefficients. Adding the
+  two variances separately, which is the obvious shortcut, gives the
+  wrong interval.
+- The modifier must be a factor, character or logical. Continuous effect
+  modification is not supported.
+- `predict(fit, x = ..., group = "Female")` gives numbers for one group.
+
 ## Knots
 
 Four knots at Harrell’s recommended quantiles is the default, and is a
@@ -331,9 +406,8 @@ interval, which is not nothing.
 - One spline exposure per model. Fit separate models, or use
   [`svyrcs_curve()`](https://j262byuu.github.io/svyrcs/reference/svyrcs_curve.md)
   on your own fit.
-- No interaction or subgroup splines yet — a curve that varies by a
-  modifier. Fit within subgroups with `subset(design, ...)` in the
-  meantime.
+- Effect modification by a *continuous* variable, and three-way
+  interactions, are not supported. Group modifiers are (see above).
 - Multiply imputed designs (`svyimputationList`) are not handled.
 - Analyses of a subsample with its own weight (for instance the NHANES
   fasting subsample) need that subsample’s weight in

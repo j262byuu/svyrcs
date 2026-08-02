@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,18 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="svyrcs-020">svyrcs 0.2.0<a class="anchor" aria-label="anchor" href="#svyrcs-020"></a></h2>
+<ul><li>
+<code><a href="../reference/svyrcs.html">svyrcs()</a></code> accepts an interaction between the spline and a grouping variable, <code>rcs(bmi, 4) * sex</code>, and returns one curve per group from a single model. Writing the terms the other way round, <code>sex * rcs(bmi, 4)</code>, works too.</li>
+<li>Two effect-modification tests are reported: <strong>Interaction</strong>, whether the association differs between groups at all, and <strong>Shape interaction</strong>, whether the curvature differs as opposed to the whole curve being shifted. The interaction test matches <code><a href="https://rdrr.io/pkg/survey/man/regTermTest.html" class="external-link">survey::regTermTest()</a></code>. Overall and non-linearity tests are also reported within each group.</li>
+<li>Group curves are estimated through a selection matrix on the full coefficient vector, so the standard error for a non-reference group correctly includes the covariance between the main and interaction terms.</li>
+<li>All groups share one reference value so the curves are comparable. <code>ref = "min"</code> and <code>ref = "max"</code> are located on the reference level’s curve, and the output says which level that was.</li>
+<li>
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> gains a <code>group</code> argument; <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> colour by group and gain <code>facet = TRUE</code>; <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> report per-group results.</li>
+<li>A rank-deficient interaction — the spline collinear with the modifier inside a group, typically when the modifier is derived from the exposure — is now diagnosed as such rather than reported as a missing coefficient.</li>
+<li>Fits without an interaction are unchanged, and a regression test pins their numbers and printed output.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="svyrcs-010">svyrcs 0.1.0<a class="anchor" aria-label="anchor" href="#svyrcs-010"></a></h2>
 <p>First release.</p>
 <ul><li>
@@ -51,7 +63,8 @@
 <li>
 <code>nhanes_bmi</code>, a public-domain NHANES extract with linked mortality follow-up, for examples and tests.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

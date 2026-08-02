@@ -13,7 +13,7 @@ specification svyrcs() does not build for you."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,7 +60,8 @@ specification <code><a href="svyrcs.html">svyrcs()</a></code> does not build for
 <span>  range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
 <span>  design <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  degf <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  degf <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  group <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -113,12 +114,18 @@ ranges.</p></dd>
 <dt id="arg-degf">degf<a class="anchor" aria-label="anchor" href="#arg-degf"></a></dt>
 <dd><p>Design degrees of freedom for the <em>t</em> quantile. Defaults to <code>survey::degf(design)</code>.</p></dd>
 
+
+<dt id="arg-group">group<a class="anchor" aria-label="anchor" href="#arg-group"></a></dt>
+<dd><p>When the spline is interacted with an effect modifier, the level or levels to
+estimate. <code>NULL</code> (default) returns every level, stacked, with a <code>group</code> column.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A data frame of class <code>svyrcs_curve</code> with columns <code>x</code>, <code>estimate</code>, <code>conf.low</code>,
-<code>conf.high</code> and <code>se</code> (on the linear-predictor scale), carrying attributes <code>ref</code>, <code>ref_method</code>,
-<code>measure</code>, <code>null</code>, <code>knots</code>, <code>var</code>, <code>degf</code> and <code>level</code>.</p>
+<code>conf.high</code> and <code>se</code> (on the linear-predictor scale), plus <code>group</code> when the model has an
+effect modifier. Carries attributes <code>ref</code>, <code>ref_method</code>, <code>measure</code>, <code>null</code>, <code>knots</code>, <code>var</code>,
+<code>degf</code>, <code>level</code> and <code>modifier</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

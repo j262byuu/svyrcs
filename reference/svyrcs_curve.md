@@ -23,7 +23,8 @@ svyrcs_curve(
   range = NULL,
   level = 0.95,
   design = NULL,
-  degf = NULL
+  degf = NULL,
+  group = NULL
 )
 ```
 
@@ -89,12 +90,19 @@ svyrcs_curve(
   Design degrees of freedom for the *t* quantile. Defaults to
   `survey::degf(design)`.
 
+- group:
+
+  When the spline is interacted with an effect modifier, the level or
+  levels to estimate. `NULL` (default) returns every level, stacked,
+  with a `group` column.
+
 ## Value
 
 A data frame of class `svyrcs_curve` with columns `x`, `estimate`,
-`conf.low`, `conf.high` and `se` (on the linear-predictor scale),
-carrying attributes `ref`, `ref_method`, `measure`, `null`, `knots`,
-`var`, `degf` and `level`.
+`conf.low`, `conf.high` and `se` (on the linear-predictor scale), plus
+`group` when the model has an effect modifier. Carries attributes `ref`,
+`ref_method`, `measure`, `null`, `knots`, `var`, `degf`, `level` and
+`modifier`.
 
 ## Details
 
