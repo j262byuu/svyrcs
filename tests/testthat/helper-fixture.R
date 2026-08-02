@@ -48,6 +48,22 @@ bare_glm <- local({
   }
 })
 
+## Fit a model with an explicit-knot rcs() term directly, bypassing svyrcs(), so the curve and
+## modifier machinery can be tested independently of the formula surgery in svyrcs().
+##
+## Knots must be inlined: survey::svyglm() and svycoxph() reject a formula referring to any symbol
+## that is not a column of the design.
+int_model <- function(rhs, response = "tchol", cox = FALSE, data_extra = NULL, nk = 4) {
+  design <- nhanes_design()
+  if (!is.null(data_extra)) {
+    for (nm in names(data_extra)) design$variables[[nm]] <- data_extra[[nm]]
+  }
+  kn <- rcs_knots(design$variables$bmi, nk)
+  txt <- paste(response, "~", rhs)
+  f <- stats::as.formula(do.call(substitute, list(str2lang(txt), list(KN = kn))))
+  if (cox) survey::svycoxph(f, design = design) else survey::svyglm(f, design = design)
+}
+
 ## Strip a basis down to a plain numeric matrix, so comparisons are about numbers rather than
 ## the knot / class attributes that rcs() deliberately attaches.
 bare <- function(b) {

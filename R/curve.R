@@ -61,8 +61,9 @@ spline_coef_index <- function(fit, term) {
   idx <- match(want, names(stats::coef(fit)))
   if (anyNA(idx)) {
     stop_svyrcs("could not find the spline coefficients for '", term$var, "' in the fitted model; ",
-                "expected ", paste(sQuote(want[is.na(idx)]), collapse = ", "), ". This happens when ",
-                "the rcs() term is used in an interaction, which is not supported.")
+                "expected ", paste(sQuote(want[is.na(idx)]), collapse = ", "), ". If the spline is ",
+                "interacted with a modifier, write rcs(", term$var, ", k) * m so that the main ",
+                "effects are estimated too.")
   }
   idx
 }
@@ -103,13 +104,19 @@ effect_measure <- function(fit) {
 ##   effect = dB %*% beta,  var = rowSums((dB %*% V) * dB)
 ##
 ## This is exact, not an approximation: it reproduces predict(type = "lp") differences to ~1e-15.
-contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate) {
+contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate, L = NULL) {
   B <- rcs_design_matrix(x, knots)
   B0 <- rcs_design_matrix(x0, knots)
   dB <- sweep(B, 2L, as.numeric(B0), "-")
 
-  est <- as.numeric(dB %*% beta)
-  variance <- rowSums((dB %*% V) * dB)
+  ## `L` maps the full coefficient vector to the spline coefficients in force for this group: the
+  ## main effects alone at the reference level, main + interaction elsewhere. Doing it as one matrix
+  ## rather than summing coefficient vectors is what makes the variance pick up
+  ## Cov(main, interaction); adding separate variances would understate every non-reference SE.
+  M <- if (is.null(L)) dB else dB %*% L
+
+  est <- as.numeric(M %*% beta)
+  variance <- rowSums((M %*% V) * M)
   ## tiny negative values can appear at the reference point through cancellation
   variance[variance < 0 & variance > -1e-10] <- 0
   se <- sqrt(variance)
@@ -154,10 +161,13 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate)
 #'   [survey::svyglm()] and [survey::svycoxph()] keep. Needed for weighted reference values and
 #'   ranges.
 #' @param degf Design degrees of freedom for the *t* quantile. Defaults to `survey::degf(design)`.
+#' @param group When the spline is interacted with an effect modifier, the level or levels to
+#'   estimate. `NULL` (default) returns every level, stacked, with a `group` column.
 #'
 #' @return A data frame of class `svyrcs_curve` with columns `x`, `estimate`, `conf.low`,
-#'   `conf.high` and `se` (on the linear-predictor scale), carrying attributes `ref`, `ref_method`,
-#'   `measure`, `null`, `knots`, `var`, `degf` and `level`.
+#'   `conf.high` and `se` (on the linear-predictor scale), plus `group` when the model has an
+#'   effect modifier. Carries attributes `ref`, `ref_method`, `measure`, `null`, `knots`, `var`,
+#'   `degf`, `level` and `modifier`.
 #'
 #' @seealso [svyrcs()]
 #'
@@ -172,11 +182,14 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate)
 #'
 #' @export
 svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = NULL, n = 200,
-                         range = NULL, level = 0.95, design = NULL, degf = NULL) {
+                         range = NULL, level = 0.95, design = NULL, degf = NULL, group = NULL) {
   term <- find_rcs_term(fit, var)
-  idx <- spline_coef_index(fit, term)
-  beta <- stats::coef(fit)[idx]
-  V <- stats::vcov(fit)[idx, idx, drop = FALSE]
+  spline_coef_index(fit, term)  # validates that the main effects are present
+  modifier <- find_modifier(fit, term)
+  ## The full coefficient vector, with the selection matrix doing the extraction: one code path for
+  ## grouped and ungrouped fits.
+  beta <- stats::coef(fit)
+  V <- stats::vcov(fit)
   meas <- effect_measure(fit)
 
   design <- design %||% fit_design(fit)
@@ -198,20 +211,63 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
     seq(rng[1L], rng[2L], length.out = as.integer(n))
   }
 
-  curve_at <- function(x0, xs) {
-    contrast_estimates(xs, x0, term$knots, beta, V, degf, level, meas$exponentiate)
-  }
-  refinfo <- resolve_ref(ref, xvals, design, term$var, ref_prob = ref_prob,
-                         curve_fun = curve_at, range = rng, meas = meas)
+  wanted <- resolve_groups(modifier, group)
 
-  out <- curve_at(refinfo$value, grid)
+  curve_at <- function(x0, xs, g = NULL) {
+    L <- group_selection(names(beta), term, modifier, g)
+    contrast_estimates(xs, x0, term$knots, beta, V, degf, level, meas$exponentiate, L)
+  }
+
+  ## One reference for all groups: curves anchored at different exposures are not comparable, and
+  ## comparability is the entire point of estimating them together. A curve-derived reference
+  ## ("min" / "max") is therefore located on the reference level's curve.
+  ref_group <- if (is.null(modifier)) NULL else modifier$ref_level
+  refinfo <- resolve_ref(ref, xvals, design, term$var, ref_prob = ref_prob,
+                         curve_fun = function(x0, xs) curve_at(x0, xs, ref_group),
+                         range = rng, meas = meas)
+  if (!is.null(modifier) && refinfo$method %in% c("minimum-risk point", "maximum-risk point")) {
+    refinfo$method <- paste0(refinfo$method, " (", modifier$ref_level, ")")
+  }
+
+  out <- if (is.null(modifier)) {
+    curve_at(refinfo$value, grid)
+  } else {
+    blocks <- lapply(wanted, function(g) {
+      cbind(curve_at(refinfo$value, grid, g), group = g, stringsAsFactors = FALSE)
+    })
+    res <- do.call(rbind, blocks)
+    res$group <- factor(res$group, levels = modifier$levels)
+    res
+  }
+
   structure(
     out,
     ref = refinfo$value, ref_method = refinfo$method,
     measure = meas$measure, null = meas$null, exponentiate = meas$exponentiate,
     knots = term$knots, var = term$var, label = term$label, degf = degf, level = level,
+    modifier = modifier,
     class = c("svyrcs_curve", "data.frame")
   )
+}
+
+## Which modifier levels to estimate, validating anything the caller asked for.
+resolve_groups <- function(modifier, group) {
+  if (is.null(modifier)) {
+    if (!is.null(group)) {
+      stop_svyrcs("`group` was given but the model has no effect modifier interacting with the ",
+                  "spline term")
+    }
+    return(NULL)
+  }
+  if (is.null(group)) return(modifier$levels)
+  group <- as.character(group)
+  bad <- setdiff(group, modifier$levels)
+  if (length(bad)) {
+    stop_svyrcs("unknown level", if (length(bad) > 1L) "s" else "", " of '", modifier$var, "': ",
+                paste(sQuote(bad), collapse = ", "), ". Available: ",
+                paste(sQuote(modifier$levels), collapse = ", "))
+  }
+  group
 }
 
 ## Exposure values actually used in the fit, for range and reference calculations.
