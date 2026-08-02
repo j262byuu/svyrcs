@@ -1,0 +1,45 @@
+url: https://j262byuu.github.io/svyrcs/
+
+template:
+  bootstrap: 5
+
+home:
+  title: Restricted cubic splines for complex survey data
+  description: >
+    Survey-weighted restricted cubic spline models for NHANES and other complex surveys, with
+    design-based confidence bands, tests of non-linearity, and publication-ready plots.
+
+reference:
+  - title: Fitting
+    desc: Fit a spline model to a survey design and get the curve, the tests and the reference.
+    contents:
+      - svyrcs
+      - svyrcs_curve
+
+  - title: The spline basis
+    desc: Building and inspecting the restricted cubic spline basis.
+    contents:
+      - rcs
+      - rcs_knots
+      - makepredictcall.svyrcs_basis
+
+  - title: Results
+    desc: Looking at, summarising and plotting a fit.
+    contents:
+      - summary.svyrcs
+      - plot.svyrcs
+      - predict.svyrcs
+      - references
+
+  - title: Data
+    contents:
+      - nhanes_bmi
+
+  - title: Package
+    contents:
+      - svyrcs-package
+
+articles:
+  - title: Getting started
+    contents:
+      - svyrcs
