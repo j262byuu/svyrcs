@@ -1,0 +1,9 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  svyrcs: svyrcs.html
+last_built: 2026-08-02T22:18Z
+urls:
+  reference: https://j262byuu.github.io/svyrcs/reference
+  article: https://j262byuu.github.io/svyrcs/articles
