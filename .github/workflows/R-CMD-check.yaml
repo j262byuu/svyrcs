@@ -46,3 +46,51 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+  # ggplot2 is a Suggests, and plot() is meant to fall back to base graphics without it. The matrix
+  # above cannot verify that, because setup-r-dependencies installs Suggests -- every run there has
+  # ggplot2 present and every ggplot2 test passes rather than skipping. This job installs the hard
+  # dependencies plus only what the test suite itself needs, so the fallback runs for real.
+  without-ggplot2:
+    runs-on: ubuntu-latest
+    name: ubuntu-latest (release, no ggplot2)
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      # Without this, R CMD check refuses to run at all when a Suggests package is missing, which is
+      # exactly the situation this job exists to create.
+      _R_CHECK_FORCE_SUGGESTS_: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          dependencies: '"hard"'
+          extra-packages: >
+            any::rcmdcheck,
+            any::testthat,
+            any::knitr,
+            any::rmarkdown,
+            any::survival,
+            any::mitools
+
+      - name: Confirm ggplot2 really is absent
+        run: |
+          if (requireNamespace("ggplot2", quietly = TRUE)) {
+            stop("ggplot2 is installed, so this job is not testing what it claims to test")
+          }
+          cat("ggplot2 absent, as intended\n")
+        shell: Rscript {0}
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
