@@ -37,8 +37,11 @@ test_that("min and max references land on the extremes of the curve", {
   fmax <- svyrcs(survival::Surv(time, event) ~ rcs(bmi, 4) + age + sex,
                  design = nhanes_design(), ref = "max", n = 500)
 
-  expect_equal(fmin$ref$method, "minimum-risk point")
-  expect_equal(fmax$ref$method, "maximum-risk point")
+  expect_match(fmin$ref$method, "^minimum-risk point")
+  expect_match(fmax$ref$method, "^maximum-risk point")
+  ## the maximum-risk BMI here is the low end of the plotting range, and the label says so
+  expect_match(fmax$ref$method, "at the range boundary")
+  expect_false(grepl("range boundary", fmin$ref$method))
 
   ## the curve anchored at its own minimum cannot dip below the null
   expect_gte(min(fmin$curve$estimate), 1 - 1e-8)

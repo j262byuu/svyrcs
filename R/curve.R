@@ -82,10 +82,17 @@ effect_measure <- function(fit) {
   }
   fam <- tryCatch(stats::family(fit), error = function(e) NULL)
   link <- if (is.null(fam)) "identity" else fam$link
+  fname <- if (is.null(fam)) "" else fam$family
   switch(
     link,
     logit = list(measure = "OR", exponentiate = TRUE, null = 1),
-    log = list(measure = "RR", exponentiate = TRUE, null = 1),
+    ## A log link on a count or binary family gives a risk or rate ratio; on a gaussian one it is a
+    ## ratio of means, which is not the same thing and should not be labelled RR.
+    log = if (grepl("poisson|binomial", fname)) {
+      list(measure = "RR", exponentiate = TRUE, null = 1)
+    } else {
+      list(measure = "Ratio", exponentiate = TRUE, null = 1)
+    },
     identity = list(measure = "Difference", exponentiate = FALSE, null = 0),
     {
       warning("no standard effect measure for the '", link, "' link; reporting contrasts on the ",
@@ -236,7 +243,18 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
     seq(rng[1L], rng[2L], length.out = as.integer(n))
   }
 
+  ## A restricted cubic spline is linear beyond the outer knots, so extrapolation is defined -- which
+  ## is exactly what makes it easy to do by accident. `ref` is refused outright, because anchoring
+  ## outside the data makes every estimate an extrapolation; individual points only warn, because
+  ## deliberate extrapolation is a legitimate, if bold, choice.
+  warn_outside_range(grid, xvals, term$var, if (is.null(at)) "`range`" else "`at`")
+
   wanted <- resolve_groups(modifier, group)
+
+  ## Flag a design that cannot identify the spline, here as well as in the tests, so the warning
+  ## does not depend on which entry point the user came through.
+  sp_idx <- match(spline_colnames(term$label, term$nk), names(beta))
+  warn_if_rank_deficient(V[sp_idx, sp_idx, drop = FALSE], term$var)
 
   mi <- mi_context(fit)
   curve_at <- function(x0, xs, g = NULL) {
@@ -264,6 +282,12 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
     res <- do.call(rbind, blocks)
     res$group <- factor(res$group, levels = modifier$levels)
     res
+  }
+
+  if (any(!is.finite(out$estimate))) {
+    warning("the curve contains non-finite estimates, which means the underlying model did not ",
+            "converge to finite coefficients -- perfect separation is the usual cause. Check the ",
+            "fitted model before using these results.", call. = FALSE)
   }
 
   structure(
@@ -294,6 +318,17 @@ resolve_groups <- function(modifier, group) {
                 paste(sQuote(modifier$levels), collapse = ", "))
   }
   group
+}
+
+warn_outside_range <- function(x, xvals, var, what) {
+  obs <- range(xvals, na.rm = TRUE)
+  out <- x < obs[1L] | x > obs[2L]
+  if (!any(out, na.rm = TRUE)) return(invisible(FALSE))
+  warning(sum(out, na.rm = TRUE), " of ", length(x), " values in ", what, " fall outside the ",
+          "observed range of '", var, "' (", format(obs[1L]), " to ", format(obs[2L]), "). ",
+          "The spline is linear beyond the outer knots, so these are extrapolations.",
+          call. = FALSE)
+  invisible(TRUE)
 }
 
 ## Normalise a design argument to a list of component designs. An ordinary design becomes a

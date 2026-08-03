@@ -53,8 +53,7 @@ assemble_tests <- function(beta, V, term, modifier, degf, mi = NULL) {
                 unlist(lapply(modifier$columns, function(cols) cols[-1L]), use.names = FALSE))
 
   by_group <- lapply(modifier$levels, function(g) {
-    group_tests(beta, V, selection_matrix(names(beta), spline_cols, modifier$columns[[g]]), degf,
-                mi)
+    group_tests(beta, V, group_selection(names(beta), term, modifier, g), degf, mi)
   })
   names(by_group) <- modifier$levels
 
@@ -140,7 +139,9 @@ is_surv_call <- function(e) {
 #' are shared across groups and a genuine interaction test is available; fitting each subgroup
 #' separately gives neither. `sex * rcs(bmi, 4)` is equivalent.
 #'
-#' The modifier must be a factor, character or logical variable. Two extra tests are then reported:
+#' The modifier must be a factor, character or logical variable; ordered factors and other contrast
+#' codings are handled, because group curves are built from the contrast matrix rather than from
+#' level names. Two extra tests are then reported:
 #' \describe{
 #'   \item{Interaction}{Are the spline-by-group terms jointly zero, i.e. does the association differ
 #'     between groups at all?}
@@ -151,6 +152,21 @@ is_surv_call <- function(e) {
 #'
 #' All groups share one reference value, so that the curves are comparable; `ref = "min"` and
 #' `ref = "max"` are located on the reference level's curve, which the printed output states.
+#'
+#' @section What is warned about:
+#' Some situations are legitimate but easy to enter by accident, so they warn rather than fail:
+#' evaluating the curve outside the observed exposure range, which a restricted cubic spline will do
+#' silently because it is linear beyond the outer knots; a design whose degrees of freedom cannot
+#' identify the spline, where the estimates stand but the intervals do not; and non-finite estimates
+#' from a model that did not converge. A reference value outside the observed range is refused
+#' outright instead, because it would make every estimate an extrapolation rather than the one point
+#' asked for.
+#'
+#' @section Size of the returned object:
+#' `fit$model` keeps the fitted model, which keeps the survey design, which keeps the data. A fit on
+#' the shipped 10,617-row design is about 9 MB, and a multiply imputed one is that again per
+#' imputation -- roughly 47 MB at `m = 5`. That is the price of being able to run your own
+#' diagnostics on `fit$model`; drop it before saving a large batch of fits if size matters.
 #'
 #' @section Multiply imputed designs:
 #' Pass a design built from a `mitools::imputationList()` and the model is fitted in every
@@ -263,6 +279,15 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
     nk <- as.integer(round(knot_spec))
     probs <- harrell_knot_probs(nk)
     kn <- unname(pooled_weighted_quantile(var, designs, probs))
+    ## Check here rather than letting rcs_knots() deduplicate: by the time the collapsed vector
+    ## reaches it, the count the user actually asked for is gone and the message would report the
+    ## number of survivors instead of the real problem.
+    if (anyDuplicated(kn)) {
+      stop_svyrcs("could not place ", nk, " distinct knots for '", var, "': the weighted quantiles ",
+                  "coincide, which happens when the exposure has few distinct values (it has ",
+                  length(unique(xvals[!is.na(xvals)])), "). Use fewer knots, or supply explicit ",
+                  "knot locations.")
+    }
     rcs_knots(xvals, kn, var = var)
   } else {
     rcs_knots(xvals, knot_spec, var = var)

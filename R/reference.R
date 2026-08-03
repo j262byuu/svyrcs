@@ -88,6 +88,12 @@ resolve_ref <- function(ref, xvals, designs, var, ref_prob = 0.5, curve_fun = NU
   grid <- seq(rng[1L], rng[2L], length.out = grid_n)
   est <- curve_fun(provisional_x0, grid)$estimate
   pick <- if (ref == "min") which.min(est) else which.max(est)
-  list(value = grid[pick],
-       method = if (ref == "min") "minimum-risk point" else "maximum-risk point")
+  method <- if (ref == "min") "minimum-risk point" else "maximum-risk point"
+  ## On a monotone curve the extremum is simply whichever end of the grid is lowest or highest,
+  ## which is a property of `range` rather than of the data. Saying so stops it being read as a
+  ## turning point that the analysis found.
+  if (pick == 1L || pick == length(grid)) {
+    method <- paste0(method, ", at the range boundary")
+  }
+  list(value = grid[pick], method = method)
 }

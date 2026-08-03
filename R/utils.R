@@ -17,6 +17,22 @@ stop_svyrcs <- function(...) {
 ## package namespace has no binding for it.
 has_ggplot2 <- function() requireNamespace("ggplot2", quietly = TRUE)
 
+## Warn when a covariance block cannot support the model it belongs to.
+##
+## Called from the curve path as well as the tests, so that a design which cannot identify the
+## spline is flagged wherever the user enters. Without this, svyrcs_curve() returned a confidence
+## band from a rank-deficient covariance without a word.
+warn_if_rank_deficient <- function(V, var) {
+  k <- ncol(V)
+  if (is.null(k) || k < 1L) return(invisible(FALSE))
+  r <- tryCatch(qr(V)$rank, error = function(e) k)
+  if (r >= k) return(invisible(FALSE))
+  warning("the spline covariance for '", var, "' has rank ", r, " but ", k, " columns, so the ",
+          "design cannot identify this model. Confidence intervals and tests are not trustworthy; ",
+          "use fewer knots, or a design with more primary sampling units.", call. = FALSE)
+  invisible(TRUE)
+}
+
 ## Is x a whole number, allowing for the usual floating point slop?
 is_count <- function(x, tol = .Machine$double.eps^0.5) {
   is.numeric(x) && length(x) == 1L && !is.na(x) && abs(x - round(x)) < tol
