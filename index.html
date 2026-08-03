@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -102,6 +102,11 @@
 <span><span class="va">by_sex</span><span class="op">$</span><span class="va">tests</span><span class="op">$</span><span class="va">interaction</span>   <span class="co"># p for interaction</span></span>
 <span><span class="va">by_sex</span><span class="op">$</span><span class="va">tests</span><span class="op">$</span><span class="va">shape</span>         <span class="co"># does the *curvature* differ, or is the curve just shifted?</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">by_sex</span><span class="op">)</span>               <span class="co"># one coloured curve per group; facet = TRUE to panel them</span></span></code></pre></div>
+<p>Analyse multiply imputed data — fitted in every imputation, combined by Rubin’s rules:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">design_mi</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>id <span class="op">=</span> <span class="op">~</span><span class="va">psu</span>, strata <span class="op">=</span> <span class="op">~</span><span class="va">strata</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">weight</span>,</span>
+<span>                       nest <span class="op">=</span> <span class="cn">TRUE</span>, data <span class="op">=</span> <span class="fu">mitools</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/mitools/man/imputationList.html" class="external-link">imputationList</a></span><span class="op">(</span><span class="va">completed_datasets</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">tchol</span>, design <span class="op">=</span> <span class="va">design_mi</span><span class="op">)</span></span></code></pre></div>
 <p>Any outcome <code>survey</code> can fit:</p>
 <table class="table">
 <colgroup>
@@ -200,6 +205,13 @@
 <td>one interaction model, curves via a selection matrix</td>
 <td>separate fits cannot produce a <em>p</em> for interaction, and estimate the covariate effects independently; the matrix form also keeps <code>Cov(main, interaction)</code> in the standard error, which adding the two variances would drop</td>
 </tr>
+<tr>
+<td>
+<code><a href="https://rdrr.io/pkg/mitools/man/MIcombine.html" class="external-link">mitools::MIcombine()</a></code>’s degrees of freedom for imputed data</td>
+<td>Barnard-Rubin degrees of freedom, per curve point</td>
+<td>
+<code>MIcombine()</code>’s rule is unbounded — it returns thousands, or <code>Inf</code>, against a design with 31 df — so intervals come out far too narrow; the corrected value is bounded by the complete-data df and exact when nothing is imputed</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -213,7 +225,7 @@
 <h2 id="citation">Citation<a class="anchor" aria-label="anchor" href="#citation"></a>
 </h2>
 <p>If this package was useful, please cite it:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/citation.html" class="external-link">citation</a></span><span class="op">(</span><span class="st">"svyrcs"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">

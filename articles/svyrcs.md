@@ -322,6 +322,86 @@ Some details worth knowing:
   modification is not supported.
 - `predict(fit, x = ..., group = "Female")` gives numbers for one group.
 
+## Missing data
+
+The shipped data has missing cholesterol for 649 people. Everything
+above quietly dropped them. Multiple imputation is the usual
+alternative, and `svyrcs` consumes the result: build the imputations
+however you like, wrap them in
+[`mitools::imputationList()`](https://rdrr.io/pkg/mitools/man/imputationList.html),
+and pass the resulting design.
+
+``` r
+
+library(mice)
+library(mitools)
+
+vars <- c("age", "sex", "race", "bmi", "tchol", "hdl", "time", "event")
+imp <- mice(nhanes_bmi[vars], m = 5, method = "pmm", maxit = 3, printFlag = FALSE, seed = 1)
+
+completed <- lapply(1:5, function(i) {
+  cbind(complete(imp, i), nhanes_bmi[c("psu", "strata", "weight")])
+})
+
+mi_design <- svydesign(
+  id = ~psu, strata = ~strata, weights = ~weight,
+  nest = TRUE, data = imputationList(completed)
+)
+
+fit_mi <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex + tchol, design = mi_design)
+fit_mi
+#> Restricted cubic spline on a complex survey design
+#> 
+#>   Model      survey-weighted Cox proportional hazards
+#>   Outcome    Surv(time, event)
+#>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)
+#>   Sample     10,617 observations, 1,893 events, 31 design df
+#>   Reference  bmi = 27.35 (weighted median), HR = 1
+#>   Imputed    m = 5, fraction of missing information 7.4e-05 to 0.00097 (median 0.00045)
+#>              degrees of freedom reduced from 31 by Barnard-Rubin
+#> 
+#>   Overall association  F = 45.93 on 3 and 29.2 df,  p = 3.61e-11 
+#>   Non-linearity        F = 53.27 on 2 and 29.2 df,  p = 1.83e-10
+```
+
+Two things are worth understanding here.
+
+**Knots and the reference are fixed before any model is fitted**, as the
+average of the survey-weighted quantiles across imputations. This is not
+a convenience: if each imputation chose its own knots, the five
+coefficient vectors would be estimates of five different
+parameterisations and Rubin’s rules would not apply to them.
+
+**The degrees of freedom are not `mitools`’.**
+[`MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html) reports
+`(m-1)(1+1/r)^2`, which has no upper bound — on this design, which has
+31 degrees of freedom, it returns numbers in the thousands and sometimes
+`Inf`. Feeding that to a *t* quantile would give confidence intervals
+far too narrow, the same error as using a normal quantile but worse.
+`svyrcs` applies the Barnard-Rubin correction, which is bounded by the
+complete-data degrees of freedom:
+
+``` r
+
+head(predict(fit_mi, x = c(18, 22, 27, 35, 45)))
+#>    x estimate  conf.low conf.high          se       df          fmi
+#> 1 18 2.751244 2.0973163  3.609062 0.132728379 29.16176 0.0005025178
+#> 2 22 1.480123 1.3248047  1.653651 0.054217717 29.16678 0.0003313869
+#> 3 27 1.000361 0.9914646  1.009338 0.004369014 29.17236 0.0001405740
+#> 4 35 1.229373 1.0900634  1.386487 0.058818934 29.16485 0.0003971519
+#> 5 45 1.736036 1.4969291  2.013335 0.072471578 29.14803 0.0009679880
+```
+
+The `df` column sits at or below 31 and drops where the fraction of
+missing information (`fmi`) is highest. When nothing in the model is
+imputed, `fmi` is zero, `df` is exactly 31, and the result is identical
+to the complete-data fit.
+
+The joint tests are treated the same way. Their denominator degrees of
+freedom are adjusted rather than taken from the usual
+multiple-imputation rule, which is derived from the imputation structure
+alone and ignores the survey design.
+
 ## Knots
 
 Four knots at Harrell’s recommended quantiles is the default, and is a
@@ -408,7 +488,6 @@ interval, which is not nothing.
   on your own fit.
 - Effect modification by a *continuous* variable, and three-way
   interactions, are not supported. Group modifiers are (see above).
-- Multiply imputed designs (`svyimputationList`) are not handled.
 - Analyses of a subsample with its own weight (for instance the NHANES
   fasting subsample) need that subsample’s weight in
   [`svydesign()`](https://rdrr.io/pkg/survey/man/svydesign.html); the

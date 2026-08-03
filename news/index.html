@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,21 @@
       <small>Source: <a href="https://github.com/j262byuu/svyrcs/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="svyrcs-030">svyrcs 0.3.0<a class="anchor" aria-label="anchor" href="#svyrcs-030"></a></h2>
+<ul><li>
+<code><a href="../reference/svyrcs.html">svyrcs()</a></code> accepts a multiply imputed design, built by passing a <code><a href="https://rdrr.io/pkg/mitools/man/imputationList.html" class="external-link">mitools::imputationList()</a></code> to <code><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">survey::svydesign()</a></code>. The model is fitted in every imputation and combined by Rubin’s rules.</li>
+<li>Knots and the reference value are computed once, as the average of the survey-weighted quantiles across imputations, and then held fixed. Without that the per-imputation coefficient vectors would not estimate the same parameters.</li>
+<li>
+<strong>Confidence intervals use Barnard-Rubin degrees of freedom, not <code><a href="https://rdrr.io/pkg/mitools/man/MIcombine.html" class="external-link">mitools::MIcombine()</a></code>’s.</strong> <code><a href="https://rdrr.io/pkg/mitools/man/MIcombine.html" class="external-link">MIcombine()</a></code> omits the small-sample correction and its degrees of freedom are unbounded — against a design with 31 degrees of freedom it returned values in the thousands, and <code>Inf</code>. Using those for a <em>t</em> quantile gives intervals far too narrow. The corrected value is bounded by the complete-data degrees of freedom and equals it exactly when nothing is imputed.</li>
+<li>The degrees of freedom are computed <strong>per curve point</strong>, because the between-imputation variance of the contrast varies along the curve.</li>
+<li>Joint tests get the same treatment: the Wald statistic on the pooled covariance, referred to an <em>F</em> distribution whose denominator applies Barnard-Rubin to the block. The Li-Raghunathan-Rubin denominator is not used, because it ignores the survey design.</li>
+<li>The curve and <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> gain <code>df</code> and <code>fmi</code> columns, and <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> reports <code>m</code> and the fraction of missing information.</li>
+<li>Effect modification (<code>rcs(x, k) * sex</code>) and all four model families work with imputed designs.</li>
+<li>A fit with nothing to impute reproduces the complete-data fit exactly — estimates, intervals and tests — which is asserted in the test suite rather than merely intended.</li>
+<li>
+<code>mitools</code> and <code>mice</code> are <code>Suggests</code> only; the pooling is implemented in the package, because the degrees of freedom need the within- and between-imputation covariance separately and <code><a href="https://rdrr.io/pkg/mitools/man/MIcombine.html" class="external-link">MIcombine()</a></code> returns only their combination.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="svyrcs-020">svyrcs 0.2.0<a class="anchor" aria-label="anchor" href="#svyrcs-020"></a></h2>
 <ul><li>

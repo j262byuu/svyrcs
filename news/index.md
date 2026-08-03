@@ -1,5 +1,46 @@
 # Changelog
 
+## svyrcs 0.3.0
+
+- [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)
+  accepts a multiply imputed design, built by passing a
+  [`mitools::imputationList()`](https://rdrr.io/pkg/mitools/man/imputationList.html)
+  to
+  [`survey::svydesign()`](https://rdrr.io/pkg/survey/man/svydesign.html).
+  The model is fitted in every imputation and combined by Rubin’s rules.
+- Knots and the reference value are computed once, as the average of the
+  survey-weighted quantiles across imputations, and then held fixed.
+  Without that the per-imputation coefficient vectors would not estimate
+  the same parameters.
+- **Confidence intervals use Barnard-Rubin degrees of freedom, not
+  [`mitools::MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)’s.**
+  [`MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html) omits
+  the small-sample correction and its degrees of freedom are unbounded —
+  against a design with 31 degrees of freedom it returned values in the
+  thousands, and `Inf`. Using those for a *t* quantile gives intervals
+  far too narrow. The corrected value is bounded by the complete-data
+  degrees of freedom and equals it exactly when nothing is imputed.
+- The degrees of freedom are computed **per curve point**, because the
+  between-imputation variance of the contrast varies along the curve.
+- Joint tests get the same treatment: the Wald statistic on the pooled
+  covariance, referred to an *F* distribution whose denominator applies
+  Barnard-Rubin to the block. The Li-Raghunathan-Rubin denominator is
+  not used, because it ignores the survey design.
+- The curve and [`predict()`](https://rdrr.io/r/stats/predict.html) gain
+  `df` and `fmi` columns, and
+  [`print()`](https://rdrr.io/r/base/print.html) reports `m` and the
+  fraction of missing information.
+- Effect modification (`rcs(x, k) * sex`) and all four model families
+  work with imputed designs.
+- A fit with nothing to impute reproduces the complete-data fit exactly
+  — estimates, intervals and tests — which is asserted in the test suite
+  rather than merely intended.
+- `mitools` and `mice` are `Suggests` only; the pooling is implemented
+  in the package, because the degrees of freedom need the within- and
+  between-imputation covariance separately and
+  [`MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)
+  returns only their combination.
+
 ## svyrcs 0.2.0
 
 - [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)

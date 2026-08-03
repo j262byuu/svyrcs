@@ -42,7 +42,11 @@ svyrcs(
   [`survey::svydesign()`](https://rdrr.io/pkg/survey/man/svydesign.html).
   Subset it with [`subset()`](https://rdrr.io/r/base/subset.html) before
   passing it in; the degrees of freedom are taken from the design you
-  pass.
+  pass. A multiply imputed design, built by passing a
+  [`mitools::imputationList()`](https://rdrr.io/pkg/mitools/man/imputationList.html)
+  to
+  [`survey::svydesign()`](https://rdrr.io/pkg/survey/man/svydesign.html),
+  is also accepted; see the section below.
 
 - family:
 
@@ -151,6 +155,37 @@ plus the overall and non-linearity tests within each group.
 All groups share one reference value, so that the curves are comparable;
 `ref = "min"` and `ref = "max"` are located on the reference level's
 curve, which the printed output states.
+
+## Multiply imputed designs
+
+Pass a design built from a
+[`mitools::imputationList()`](https://rdrr.io/pkg/mitools/man/imputationList.html)
+and the model is fitted in every imputation and combined by Rubin's
+rules. Knots and the reference value are computed **once**, as the
+average of the survey-weighted quantiles across imputations, and then
+held fixed: if each imputation chose its own knots, the coefficient
+vectors would not be estimates of the same parameters and Rubin's rules
+would not apply.
+
+The curve then carries two extra columns, `df` and `fmi`: the degrees of
+freedom used at that point and the fraction of missing information
+there.
+
+**On the degrees of freedom.**
+[`mitools::MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)
+reports \\(m - 1)(1 + 1/r)^2\\, which is unbounded above — against the
+design shipped with this package, which has 31 degrees of freedom, it
+returns values in the thousands or `Inf`. Using that for a *t* quantile
+would give confidence intervals far too narrow. `svyrcs` applies the
+Barnard-Rubin correction instead, which bounds the result by the
+complete-data degrees of freedom and returns exactly `degf(design)` when
+there is nothing to impute. The same reasoning applies to the joint
+tests, whose denominator degrees of freedom are adjusted the same way
+rather than taken from the Li-Raghunathan-Rubin rule, which ignores the
+survey design entirely.
+
+Building the imputations is not this package's job — use `mice` or
+similar, then hand the completed datasets over.
 
 ## Why not just use `rms`
 

@@ -67,6 +67,16 @@ by_sex$tests$shape         # does the *curvature* differ, or is the curve just s
 plot(by_sex)               # one coloured curve per group; facet = TRUE to panel them
 ```
 
+Analyse multiply imputed data — fitted in every imputation, combined by
+Rubin’s rules:
+
+``` r
+
+design_mi <- svydesign(id = ~psu, strata = ~strata, weights = ~weight,
+                       nest = TRUE, data = mitools::imputationList(completed_datasets))
+svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + tchol, design = design_mi)
+```
+
 Any outcome `survey` can fit:
 
 | outcome      | call                                        | reports         |
@@ -90,6 +100,7 @@ fixed several things that are easy to get wrong when doing this by hand:
 | knots and reference at unweighted quantiles | survey-weighted quantiles by default | in a design-based analysis the population median is the weighted one; `weighted_knots = FALSE` restores the old behaviour |
 | [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) plus the `datadist` global option | knots stored on the fitted model | [`predict()`](https://rdrr.io/r/stats/predict.html) on new data can never silently re-derive different knots, and there is no global state to keep in sync |
 | subgroup curves from separate stratified fits | one interaction model, curves via a selection matrix | separate fits cannot produce a *p* for interaction, and estimate the covariate effects independently; the matrix form also keeps `Cov(main, interaction)` in the standard error, which adding the two variances would drop |
+| [`mitools::MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)’s degrees of freedom for imputed data | Barnard-Rubin degrees of freedom, per curve point | `MIcombine()`’s rule is unbounded — it returns thousands, or `Inf`, against a design with 31 df — so intervals come out far too narrow; the corrected value is bounded by the complete-data df and exact when nothing is imputed |
 
 ## Documentation
 

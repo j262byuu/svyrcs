@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -356,12 +356,84 @@ for one group.</li>
 </ul>
 </div>
 <div class="section level2">
+<h2 id="missing-data">Missing data<a class="anchor" aria-label="anchor" href="#missing-data"></a>
+</h2>
+<p>The shipped data has missing cholesterol for 649 people. Everything
+above quietly dropped them. Multiple imputation is the usual
+alternative, and <code>svyrcs</code> consumes the result: build the
+imputations however you like, wrap them in
+<code><a href="https://rdrr.io/pkg/mitools/man/imputationList.html" class="external-link">mitools::imputationList()</a></code>, and pass the resulting
+design.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/amices/mice" class="external-link">mice</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">mitools</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">vars</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"age"</span>, <span class="st">"sex"</span>, <span class="st">"race"</span>, <span class="st">"bmi"</span>, <span class="st">"tchol"</span>, <span class="st">"hdl"</span>, <span class="st">"time"</span>, <span class="st">"event"</span><span class="op">)</span></span>
+<span><span class="va">imp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://amices.org/mice/reference/mice.html" class="external-link">mice</a></span><span class="op">(</span><span class="va">nhanes_bmi</span><span class="op">[</span><span class="va">vars</span><span class="op">]</span>, m <span class="op">=</span> <span class="fl">5</span>, method <span class="op">=</span> <span class="st">"pmm"</span>, maxit <span class="op">=</span> <span class="fl">3</span>, printFlag <span class="op">=</span> <span class="cn">FALSE</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">completed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://amices.org/mice/reference/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/complete.html" class="external-link">complete</a></span><span class="op">(</span><span class="va">imp</span>, <span class="va">i</span><span class="op">)</span>, <span class="va">nhanes_bmi</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"psu"</span>, <span class="st">"strata"</span>, <span class="st">"weight"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mi_design</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span></span>
+<span>  id <span class="op">=</span> <span class="op">~</span><span class="va">psu</span>, strata <span class="op">=</span> <span class="op">~</span><span class="va">strata</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">weight</span>,</span>
+<span>  nest <span class="op">=</span> <span class="cn">TRUE</span>, data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/mitools/man/imputationList.html" class="external-link">imputationList</a></span><span class="op">(</span><span class="va">completed</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_mi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">tchol</span>, design <span class="op">=</span> <span class="va">mi_design</span><span class="op">)</span></span>
+<span><span class="va">fit_mi</span></span>
+<span><span class="co">#&gt; Restricted cubic spline on a complex survey design</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Model      survey-weighted Cox proportional hazards</span></span>
+<span><span class="co">#&gt;   Outcome    Surv(time, event)</span></span>
+<span><span class="co">#&gt;   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)</span></span>
+<span><span class="co">#&gt;   Sample     10,617 observations, 1,893 events, 31 design df</span></span>
+<span><span class="co">#&gt;   Reference  bmi = 27.35 (weighted median), HR = 1</span></span>
+<span><span class="co">#&gt;   Imputed    m = 5, fraction of missing information 7.4e-05 to 0.00097 (median 0.00045)</span></span>
+<span><span class="co">#&gt;              degrees of freedom reduced from 31 by Barnard-Rubin</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;   Overall association  F = 45.93 on 3 and 29.2 df,  p = 3.61e-11 </span></span>
+<span><span class="co">#&gt;   Non-linearity        F = 53.27 on 2 and 29.2 df,  p = 1.83e-10</span></span></code></pre></div>
+<p>Two things are worth understanding here.</p>
+<p><strong>Knots and the reference are fixed before any model is
+fitted</strong>, as the average of the survey-weighted quantiles across
+imputations. This is not a convenience: if each imputation chose its own
+knots, the five coefficient vectors would be estimates of five different
+parameterisations and Rubin’s rules would not apply to them.</p>
+<p><strong>The degrees of freedom are not
+<code>mitools</code>’.</strong> <code><a href="https://rdrr.io/pkg/mitools/man/MIcombine.html" class="external-link">MIcombine()</a></code> reports
+<code>(m-1)(1+1/r)^2</code>, which has no upper bound — on this design,
+which has 31 degrees of freedom, it returns numbers in the thousands and
+sometimes <code>Inf</code>. Feeding that to a <em>t</em> quantile would
+give confidence intervals far too narrow, the same error as using a
+normal quantile but worse. <code>svyrcs</code> applies the Barnard-Rubin
+correction, which is bounded by the complete-data degrees of
+freedom:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit_mi</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">18</span>, <span class="fl">22</span>, <span class="fl">27</span>, <span class="fl">35</span>, <span class="fl">45</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;    x estimate  conf.low conf.high          se       df          fmi</span></span>
+<span><span class="co">#&gt; 1 18 2.751244 2.0973163  3.609062 0.132728379 29.16176 0.0005025178</span></span>
+<span><span class="co">#&gt; 2 22 1.480123 1.3248047  1.653651 0.054217717 29.16678 0.0003313869</span></span>
+<span><span class="co">#&gt; 3 27 1.000361 0.9914646  1.009338 0.004369014 29.17236 0.0001405740</span></span>
+<span><span class="co">#&gt; 4 35 1.229373 1.0900634  1.386487 0.058818934 29.16485 0.0003971519</span></span>
+<span><span class="co">#&gt; 5 45 1.736036 1.4969291  2.013335 0.072471578 29.14803 0.0009679880</span></span></code></pre></div>
+<p>The <code>df</code> column sits at or below 31 and drops where the
+fraction of missing information (<code>fmi</code>) is highest. When
+nothing in the model is imputed, <code>fmi</code> is zero,
+<code>df</code> is exactly 31, and the result is identical to the
+complete-data fit.</p>
+<p>The joint tests are treated the same way. Their denominator degrees
+of freedom are adjusted rather than taken from the usual
+multiple-imputation rule, which is derived from the imputation structure
+alone and ignores the survey design.</p>
+</div>
+<div class="section level2">
 <h2 id="knots">Knots<a class="anchor" aria-label="anchor" href="#knots"></a>
 </h2>
 <p>Four knots at Harrell’s recommended quantiles is the default, and is
 a reasonable choice for most sample sizes. More knots buy flexibility at
 the cost of stability.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">knots</span></span>
 <span><span class="co">#&gt; [1] 19.78 25.22 29.71 40.67</span></span>
 <span><span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">5</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span><span class="op">$</span><span class="va">knots</span></span>
@@ -375,7 +447,7 @@ you would get from a naive script.</p>
 <p>Whatever you choose, the knots are stored on the fitted model, so
 predictions on new data can never be made against silently re-derived
 knots:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">knots</span></span>
 <span><span class="co">#&gt; [1] 19.78 25.22 29.71 40.67</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/terms.html" class="external-link">terms</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span><span class="op">)</span>, <span class="st">"predvars"</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
@@ -387,7 +459,7 @@ knots:</p>
 <p>If you need a specification <code><a href="../reference/svyrcs.html">svyrcs()</a></code> does not build — a
 stratified Cox model, an unusual family, extra arguments — fit it
 yourself and hand it over:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svycoxph.html" class="external-link">svycoxph</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/pkg/survival/man/strata.html" class="external-link">strata</a></span><span class="op">(</span><span class="va">sex</span><span class="op">)</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu"><a href="../reference/svyrcs_curve.html">svyrcs_curve</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">"bmi"</span>, ref <span class="op">=</span> <span class="st">"min"</span>, n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         x estimate conf.low conf.high         se</span></span>
@@ -432,8 +504,6 @@ estimated from the design anyway.</li>
 <code><a href="../reference/svyrcs_curve.html">svyrcs_curve()</a></code> on your own fit.</li>
 <li>Effect modification by a <em>continuous</em> variable, and three-way
 interactions, are not supported. Group modifiers are (see above).</li>
-<li>Multiply imputed designs (<code>svyimputationList</code>) are not
-handled.</li>
 <li>Analyses of a subsample with its own weight (for instance the NHANES
 fasting subsample) need that subsample’s weight in
 <code><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign()</a></code>; the shipped data carries only the MEC exam
