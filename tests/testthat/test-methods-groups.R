@@ -70,7 +70,8 @@ test_that("predict matches the stored curve within each group", {
 })
 
 test_that("autoplot maps colour and fill to the group and labels the legend", {
-  p <- autoplot(grp_fit())
+  skip_if_not_installed("ggplot2")
+  p <- ggplot2::autoplot(grp_fit())
   expect_s3_class(p, "ggplot")
   expect_equal(p$labels$colour, "sex")
   expect_equal(p$labels$fill, "sex")
@@ -79,25 +80,28 @@ test_that("autoplot maps colour and fill to the group and labels the legend", {
 })
 
 test_that("facet = TRUE panels the groups and drops the legend", {
-  p <- autoplot(grp_fit(), facet = TRUE)
+  skip_if_not_installed("ggplot2")
+  p <- ggplot2::autoplot(grp_fit(), facet = TRUE)
   expect_s3_class(p$facet, "FacetWrap")
   expect_equal(p$theme$legend.position, "none")
   expect_silent(invisible(ggplot2::ggplot_build(p)))
 
-  expect_null(autoplot(grp_fit())$facet$params$facets$group)
+  expect_null(ggplot2::autoplot(grp_fit())$facet$params$facets$group)
 })
 
 test_that("the grouped subtitle carries the interaction p-value", {
-  p <- autoplot(grp_fit(), title = TRUE)
+  skip_if_not_installed("ggplot2")
+  p <- ggplot2::autoplot(grp_fit(), title = TRUE)
   expect_match(p$labels$subtitle, "p\\(interaction by sex\\)")
   expect_lt(max(nchar(strsplit(p$labels$subtitle, "\n", fixed = TRUE)[[1L]])), 90)
 
   ## and an ungrouped fit does not mention it
-  expect_false(grepl("interaction", autoplot(gaussian_fit(), title = TRUE)$labels$subtitle))
+  expect_false(grepl("interaction", ggplot2::autoplot(gaussian_fit(), title = TRUE)$labels$subtitle))
 })
 
 test_that("the ungrouped plot is unchanged", {
-  p <- autoplot(gaussian_fit())
+  skip_if_not_installed("ggplot2")
+  p <- ggplot2::autoplot(gaussian_fit())
   expect_null(p$labels$colour)
   expect_null(p$labels$fill)
   expect_equal(nrow(p$data), 200L)

@@ -5,8 +5,12 @@
 #' logarithmic y axis, which is the scale on which the confidence band is symmetric; mean differences
 #' are drawn on a linear axis.
 #'
-#' The result is an ordinary `ggplot` object, so it can be modified in the usual way, for example
-#' `plot(fit) + ggplot2::labs(x = "Body mass index")`.
+#' ggplot2 is used when it is installed, and an equivalent base graphics plot is drawn when it is
+#' not, so plotting always works even though ggplot2 is only a suggested dependency. The two look
+#' similar but are not pixel-identical; use `backend` to force one or the other.
+#'
+#' On the ggplot2 path the result is an ordinary `ggplot` object returned invisibly, so it can be
+#' modified in the usual way: `plot(fit) + ggplot2::labs(x = "Body mass index")`.
 #'
 #' @param x,object An object from [svyrcs()].
 #' @param xlab,ylab Axis labels. The defaults name the exposure and the effect measure.
@@ -19,7 +23,14 @@
 #'   overlaying them.
 #' @param ... Ignored.
 #'
-#' @return A `ggplot` object.
+#' @return
+#' `autoplot()` always returns a `ggplot` object.
+#'
+#' `plot()` draws, and what it returns depends on the backend it used: the `ggplot` object
+#' (invisibly) on the ggplot2 path, and the fit itself (invisibly) on the base graphics path. Code
+#' that relies on the returned `ggplot`, such as `plot(fit) + ggplot2::labs(...)`, therefore needs
+#' ggplot2 to be installed. Pass `backend = "ggplot2"` to make that requirement explicit and get a
+#' clear error rather than a surprise.
 #'
 #' @examples
 #' design <- survey::svydesign(
@@ -27,13 +38,30 @@
 #'   nest = TRUE, data = nhanes_bmi
 #' )
 #' fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+#'
+#' # works with or without ggplot2 installed
 #' plot(fit)
-#' plot(fit, title = TRUE) + ggplot2::labs(x = "Body mass index (kg/m2)")
+#' plot(fit, backend = "base", title = TRUE)
+#'
+#' # modifying the plot needs ggplot2
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   plot(fit, title = TRUE) + ggplot2::labs(x = "Body mass index (kg/m2)")
+#' }
 #'
 #' @name plot.svyrcs
-#' @export
+#'
+#' @section Requires ggplot2:
+#' `autoplot()` needs ggplot2, which is a suggested rather than a required dependency. Because of
+#' that this package cannot re-export the generic, so `autoplot(fit)` needs `library(ggplot2)` first.
+#' `plot(fit)` works either way, falling back to base graphics.
+#'
+#' @exportS3Method ggplot2::autoplot
 autoplot.svyrcs <- function(object, xlab = NULL, ylab = NULL, title = NULL, rug = FALSE,
                             band_alpha = 0.2, colour = "#2C6E9B", facet = FALSE, ...) {
+  if (!has_ggplot2()) {
+    stop_svyrcs("autoplot() needs the 'ggplot2' package; install it with ",
+                "install.packages(\"ggplot2\"), or use plot(), which falls back to base graphics")
+  }
   cv <- as.data.frame(object$curve)
   ratio <- isTRUE(object$exponentiate)
   grouped <- !is.null(object$groups)
@@ -137,13 +165,30 @@ autoplot.svyrcs <- function(object, xlab = NULL, ylab = NULL, title = NULL, rug 
   p
 }
 
+#' @param backend Which graphics system to draw with. `"auto"` (default) uses ggplot2 when it is
+#'   installed and base graphics otherwise; `"ggplot2"` and `"base"` force one or the other. Forcing
+#'   `"ggplot2"` without the package installed is an error.
+#'
 #' @rdname plot.svyrcs
 #' @export
-plot.svyrcs <- function(x, ...) {
-  print(autoplot(x, ...))
-  invisible(x)
-}
+plot.svyrcs <- function(x, ..., backend = c("auto", "ggplot2", "base")) {
+  backend <- match.arg(backend)
+  have_ggplot2 <- has_ggplot2()
 
-#' @importFrom ggplot2 autoplot
-#' @export
-ggplot2::autoplot
+  if (backend == "ggplot2" && !have_ggplot2) {
+    stop_svyrcs("`backend = \"ggplot2\"` needs the 'ggplot2' package; install it with ",
+                "install.packages(\"ggplot2\"), or use backend = \"base\"")
+  }
+
+  if (backend == "base" || (backend == "auto" && !have_ggplot2)) {
+    return(base_plot_svyrcs(x, ...))
+  }
+
+  ## Return the ggplot, not the fit. Returning the fit is what `plot(fit) + ggplot2::labs(...)`
+  ## needs, and returning the fit instead made that idiom evaluate to NULL: ggplot2's `+.gg` accepts
+  ## a non-ggplot left operand and silently yields NULL rather than erroring, so neither the user nor
+  ## R CMD check ever saw a problem. Invisibly, so `plot(fit)` at the console still just draws.
+  p <- autoplot.svyrcs(x, ...)
+  print(p)
+  invisible(p)
+}

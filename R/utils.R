@@ -10,6 +10,13 @@ stop_svyrcs <- function(...) {
   ))
 }
 
+## Whether the ggplot2 backend is available.
+##
+## A named function rather than an inline requireNamespace() call, so that the fallback branches are
+## reachable in tests on a machine that does have ggplot2: a base function cannot be mocked if the
+## package namespace has no binding for it.
+has_ggplot2 <- function() requireNamespace("ggplot2", quietly = TRUE)
+
 ## Is x a whole number, allowing for the usual floating point slop?
 is_count <- function(x, tol = .Machine$double.eps^0.5) {
   is.numeric(x) && length(x) == 1L && !is.na(x) && abs(x - round(x)) < tol

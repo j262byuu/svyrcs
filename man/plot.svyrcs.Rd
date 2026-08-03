@@ -17,7 +17,7 @@
   ...
 )
 
-\method{plot}{svyrcs}(x, ...)
+\method{plot}{svyrcs}(x, ..., backend = c("auto", "ggplot2", "base"))
 }
 \arguments{
 \item{xlab, ylab}{Axis labels. The defaults name the exposure and the effect measure.}
@@ -37,9 +37,19 @@ overlaying them.}
 \item{...}{Ignored.}
 
 \item{x, object}{An object from \code{\link[=svyrcs]{svyrcs()}}.}
+
+\item{backend}{Which graphics system to draw with. \code{"auto"} (default) uses ggplot2 when it is
+installed and base graphics otherwise; \code{"ggplot2"} and \code{"base"} force one or the other. Forcing
+\code{"ggplot2"} without the package installed is an error.}
 }
 \value{
-A \code{ggplot} object.
+\code{autoplot()} always returns a \code{ggplot} object.
+
+\code{plot()} draws, and what it returns depends on the backend it used: the \code{ggplot} object
+(invisibly) on the ggplot2 path, and the fit itself (invisibly) on the base graphics path. Code
+that relies on the returned \code{ggplot}, such as \code{plot(fit) + ggplot2::labs(...)}, therefore needs
+ggplot2 to be installed. Pass \code{backend = "ggplot2"} to make that requirement explicit and get a
+clear error rather than a surprise.
 }
 \description{
 Draws the estimated exposure-response curve with its confidence band, a line at the null, and a
@@ -48,16 +58,34 @@ logarithmic y axis, which is the scale on which the confidence band is symmetric
 are drawn on a linear axis.
 }
 \details{
-The result is an ordinary \code{ggplot} object, so it can be modified in the usual way, for example
-\code{plot(fit) + ggplot2::labs(x = "Body mass index")}.
+ggplot2 is used when it is installed, and an equivalent base graphics plot is drawn when it is
+not, so plotting always works even though ggplot2 is only a suggested dependency. The two look
+similar but are not pixel-identical; use \code{backend} to force one or the other.
+
+On the ggplot2 path the result is an ordinary \code{ggplot} object returned invisibly, so it can be
+modified in the usual way: \code{plot(fit) + ggplot2::labs(x = "Body mass index")}.
 }
+\section{Requires ggplot2}{
+
+\code{autoplot()} needs ggplot2, which is a suggested rather than a required dependency. Because of
+that this package cannot re-export the generic, so \code{autoplot(fit)} needs \code{library(ggplot2)} first.
+\code{plot(fit)} works either way, falling back to base graphics.
+}
+
 \examples{
 design <- survey::svydesign(
   id = ~psu, strata = ~strata, weights = ~weight,
   nest = TRUE, data = nhanes_bmi
 )
 fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+
+# works with or without ggplot2 installed
 plot(fit)
-plot(fit, title = TRUE) + ggplot2::labs(x = "Body mass index (kg/m2)")
+plot(fit, backend = "base", title = TRUE)
+
+# modifying the plot needs ggplot2
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  plot(fit, title = TRUE) + ggplot2::labs(x = "Body mass index (kg/m2)")
+}
 
 }
