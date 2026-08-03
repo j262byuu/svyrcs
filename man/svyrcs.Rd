@@ -24,7 +24,9 @@ with \code{\link[survey:svyglm]{survey::svyglm()}}. Crossing the spline with a g
 estimates one curve per group and tests whether they differ; see the section below.}
 
 \item{design}{A survey design object, as built by \code{\link[survey:svydesign]{survey::svydesign()}}. Subset it with
-\code{\link[=subset]{subset()}} before passing it in; the degrees of freedom are taken from the design you pass.}
+\code{\link[=subset]{subset()}} before passing it in; the degrees of freedom are taken from the design you pass.
+A multiply imputed design, built by passing a \code{mitools::imputationList()} to
+\code{\link[survey:svydesign]{survey::svydesign()}}, is also accepted; see the section below.}
 
 \item{family}{Family for the \code{\link[survey:svyglm]{survey::svyglm()}} path. Use \code{quasibinomial()} for a binary outcome
 (odds ratios), \code{quasipoisson()} for counts or rates (rate ratios), or the default
@@ -84,6 +86,30 @@ plus the overall and non-linearity tests within each group.
 
 All groups share one reference value, so that the curves are comparable; \code{ref = "min"} and
 \code{ref = "max"} are located on the reference level's curve, which the printed output states.
+}
+
+\section{Multiply imputed designs}{
+
+Pass a design built from a \code{mitools::imputationList()} and the model is fitted in every
+imputation and combined by Rubin's rules. Knots and the reference value are computed \strong{once}, as
+the average of the survey-weighted quantiles across imputations, and then held fixed: if each
+imputation chose its own knots, the coefficient vectors would not be estimates of the same
+parameters and Rubin's rules would not apply.
+
+The curve then carries two extra columns, \code{df} and \code{fmi}: the degrees of freedom used at that
+point and the fraction of missing information there.
+
+\strong{On the degrees of freedom.} \code{mitools::MIcombine()} reports
+\eqn{(m - 1)(1 + 1/r)^2}, which is unbounded above — against the design shipped with this package,
+which has 31 degrees of freedom, it returns values in the thousands or \code{Inf}. Using that for a
+\emph{t} quantile would give confidence intervals far too narrow. \code{svyrcs} applies the Barnard-Rubin
+correction instead, which bounds the result by the complete-data degrees of freedom and returns
+exactly \code{degf(design)} when there is nothing to impute. The same reasoning applies to the joint
+tests, whose denominator degrees of freedom are adjusted the same way rather than taken from the
+Li-Raghunathan-Rubin rule, which ignores the survey design entirely.
+
+Building the imputations is not this package's job — use \code{mice} or similar, then hand the
+completed datasets over.
 }
 
 \section{Why not just use \code{rms}}{
