@@ -74,6 +74,11 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           dependencies: '"hard"'
+          # Caching must be off here. The cache key falls back to an os-and-R-version prefix, so
+          # this job would restore the matrix jobs' library -- which has every Suggests in it,
+          # ggplot2 included -- and quietly stop testing what it exists to test. The dependency
+          # resolution is correct either way; it is the restored library that is the problem.
+          cache: false
           extra-packages: >
             any::rcmdcheck,
             any::testthat,
