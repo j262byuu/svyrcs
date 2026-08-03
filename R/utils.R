@@ -36,6 +36,24 @@ weighted_mean <- function(var, design) {
   as.numeric(m)[1L]
 }
 
+## Weighted quantities averaged over a list of designs.
+##
+## With one design these are the plain weighted quantities. With several, they average across
+## imputations, which is what fixes the knots and the reference value to a single set of numbers
+## before any model is fitted -- without that, the per-imputation coefficient vectors would not be
+## estimates of the same parameters and Rubin's rules would not apply.
+pooled_weighted_quantile <- function(var, designs, probs) {
+  if (length(designs) == 1L) return(weighted_quantile(var, designs[[1L]], probs))
+  each <- vapply(designs, function(d) unname(weighted_quantile(var, d, probs)),
+                 numeric(length(probs)))
+  if (!is.matrix(each)) each <- matrix(each, nrow = length(probs))
+  stats::setNames(rowMeans(each), paste0(probs * 100, "%"))
+}
+
+pooled_weighted_mean <- function(var, designs) {
+  mean(vapply(designs, function(d) weighted_mean(var, d), numeric(1L)))
+}
+
 ## The exposure values actually used by a fitted model, i.e. after complete-case deletion.
 model_variable <- function(fit, var) {
   mf <- stats::model.frame(fit)

@@ -104,7 +104,8 @@ effect_measure <- function(fit) {
 ##   effect = dB %*% beta,  var = rowSums((dB %*% V) * dB)
 ##
 ## This is exact, not an approximation: it reproduces predict(type = "lp") differences to ~1e-15.
-contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate, L = NULL) {
+contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate, L = NULL,
+                               mi = NULL) {
   B <- rcs_design_matrix(x, knots)
   B0 <- rcs_design_matrix(x0, knots)
   dB <- sweep(B, 2L, as.numeric(B0), "-")
@@ -121,17 +122,37 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate,
   variance[variance < 0 & variance > -1e-10] <- 0
   se <- sqrt(variance)
 
-  crit <- stats::qt(1 - (1 - level) / 2, df = degf)
+  ## Under multiple imputation the reference distribution is not the same at every point: the
+  ## between-imputation variance of the contrast varies along the curve, so the degrees of freedom
+  ## have to be computed per point rather than once for the whole fit.
+  extra <- NULL
+  if (is.null(mi)) {
+    df_point <- degf
+  } else {
+    u <- rowSums((M %*% mi$Ubar) * M)
+    b <- rowSums((M %*% mi$B) * M)
+    u[u < 0] <- 0
+    b[b < 0] <- 0
+    df_point <- barnard_rubin_df(u, b, mi$m, mi$degf)
+    extra <- list(df = df_point, fmi = fraction_missing(u, b, mi$m))
+  }
+
+  crit <- stats::qt(1 - (1 - level) / 2, df = df_point)
   lo <- est - crit * se
   hi <- est + crit * se
 
-  if (exponentiate) {
+  out <- if (exponentiate) {
     data.frame(x = x, estimate = exp(est), conf.low = exp(lo), conf.high = exp(hi),
                se = se, row.names = NULL)
   } else {
     data.frame(x = x, estimate = est, conf.low = lo, conf.high = hi,
                se = se, row.names = NULL)
   }
+  if (!is.null(extra)) {
+    out$df <- extra$df
+    out$fmi <- extra$fmi
+  }
+  out
 }
 
 #' Exposure-response curve from a fitted survey model
@@ -193,7 +214,11 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
   meas <- effect_measure(fit)
 
   design <- design %||% fit_design(fit)
-  degf <- degf %||% (if (!is.null(design)) survey::degf(design) else NULL)
+  ## Weighted quantities are averaged over the imputations, so the design is always handled as a
+  ## list. For an ordinary fit that list has one element and nothing changes.
+  designs <- as_design_list(design)
+  degf <- degf %||% (if (inherits(fit, "svyrcs_mifit")) fit$degf
+                     else if (!is.null(designs)) survey::degf(designs[[1L]]) else NULL)
   if (is.null(degf) || !is.finite(degf) || degf <= 0) {
     stop_svyrcs("could not determine the survey degrees of freedom; pass `degf` explicitly")
   }
@@ -201,8 +226,8 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
     stop_svyrcs("`level` must be a single number strictly between 0 and 1")
   }
 
-  xvals <- exposure_values(fit, term$var, design)
-  rng <- range %||% exposure_range(xvals, design, term$var)
+  xvals <- exposure_values(fit, term$var, designs)
+  rng <- range %||% exposure_range(xvals, designs, term$var)
   grid <- if (!is.null(at)) {
     if (!is.numeric(at) || !length(at)) stop_svyrcs("`at` must be a non-empty numeric vector")
     as.numeric(at)
@@ -213,16 +238,17 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
 
   wanted <- resolve_groups(modifier, group)
 
+  mi <- mi_context(fit)
   curve_at <- function(x0, xs, g = NULL) {
     L <- group_selection(names(beta), term, modifier, g)
-    contrast_estimates(xs, x0, term$knots, beta, V, degf, level, meas$exponentiate, L)
+    contrast_estimates(xs, x0, term$knots, beta, V, degf, level, meas$exponentiate, L, mi)
   }
 
   ## One reference for all groups: curves anchored at different exposures are not comparable, and
   ## comparability is the entire point of estimating them together. A curve-derived reference
   ## ("min" / "max") is therefore located on the reference level's curve.
   ref_group <- if (is.null(modifier)) NULL else modifier$ref_level
-  refinfo <- resolve_ref(ref, xvals, design, term$var, ref_prob = ref_prob,
+  refinfo <- resolve_ref(ref, xvals, designs, term$var, ref_prob = ref_prob,
                          curve_fun = function(x0, xs) curve_at(x0, xs, ref_group),
                          range = rng, meas = meas)
   if (!is.null(modifier) && refinfo$method %in% c("minimum-risk point", "maximum-risk point")) {
@@ -270,11 +296,25 @@ resolve_groups <- function(modifier, group) {
   group
 }
 
-## Exposure values actually used in the fit, for range and reference calculations.
-exposure_values <- function(fit, var, design) {
-  if (!is.null(design)) {
-    v <- tryCatch(design$variables[[var]], error = function(e) NULL)
-    if (!is.null(v)) return(as.numeric(v))
+## Normalise a design argument to a list of component designs. An ordinary design becomes a
+## one-element list; a multiply imputed one becomes its components.
+as_design_list <- function(design) {
+  if (is.null(design)) return(NULL)
+  if (is_mi_design(design)) return(mi_components(design))
+  if (is.list(design) && !inherits(design, c("survey.design", "svyrep.design")) &&
+      length(design) && inherits(design[[1L]], c("survey.design", "svyrep.design"))) {
+    return(design)
+  }
+  list(design)
+}
+
+## Exposure values actually used in the fit, for range and reference calculations. Under imputation
+## the exposure itself may be imputed, so every completed version contributes.
+exposure_values <- function(fit, var, designs) {
+  if (!is.null(designs)) {
+    v <- tryCatch(unlist(lapply(designs, function(d) d$variables[[var]]), use.names = FALSE),
+                  error = function(e) NULL)
+    if (!is.null(v) && length(v)) return(as.numeric(v))
   }
   mf <- tryCatch(stats::model.frame(fit), error = function(e) NULL)
   if (!is.null(mf)) {
@@ -290,9 +330,9 @@ exposure_values <- function(fit, var, design) {
               "pass `range` explicitly")
 }
 
-exposure_range <- function(xvals, design, var) {
-  if (!is.null(design)) {
-    q <- tryCatch(weighted_quantile(var, design, c(0.01, 0.99)), error = function(e) NULL)
+exposure_range <- function(xvals, designs, var) {
+  if (!is.null(designs)) {
+    q <- tryCatch(pooled_weighted_quantile(var, designs, c(0.01, 0.99)), error = function(e) NULL)
     if (!is.null(q)) return(unname(q))
   }
   unname(stats::quantile(xvals, c(0.01, 0.99), na.rm = TRUE))
