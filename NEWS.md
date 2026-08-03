@@ -1,3 +1,20 @@
+# svyrcs 0.4.0
+
+* **`ggplot2` moved from `Imports` to `Suggests`.** The hard dependency chain drops from 27 packages
+  to 11, six of which needed compilation. Plotting is not lost: `plot()` uses ggplot2 when it is
+  installed and draws an equivalent base graphics plot when it is not.
+* `plot()` gains a `backend` argument (`"auto"`, `"ggplot2"`, `"base"`) so either path can be
+  requested explicitly.
+* **Bug fix:** `plot()` returned the fit rather than the `ggplot`, so the documented idiom
+  `plot(fit) + ggplot2::labs(...)` silently evaluated to `NULL` instead of modifying the plot.
+  ggplot2's `+` accepts a non-ggplot left operand without erroring, so neither users nor `R CMD
+  check` would have noticed. `plot()` now returns the `ggplot` invisibly on the ggplot2 path.
+* **Breaking:** `autoplot(fit)` now needs `library(ggplot2)` first. With ggplot2 only suggested, the
+  package can no longer re-export the generic; the method is registered on `ggplot2::autoplot`
+  through delayed S3 registration instead. `plot(fit)` is unaffected.
+* Faceted base graphics panels share one y axis. Per-panel axes would make a smaller subgroup effect
+  look identical to a larger one, which is the opposite of what panelling subgroups is for.
+
 # svyrcs 0.3.0
 
 * `svyrcs()` accepts a multiply imputed design, built by passing a `mitools::imputationList()` to

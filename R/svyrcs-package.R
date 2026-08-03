@@ -26,6 +26,5 @@
 #' @importFrom stats qt pf pchisq quantile terms model.frame
 #' @importFrom stats setNames reformulate gaussian median family
 #' @importFrom survey svydesign svyglm svycoxph degf svyquantile svymean
-#' @importFrom ggplot2 autoplot
 #' @importFrom rlang .data
 NULL

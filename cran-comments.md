@@ -2,7 +2,7 @@
 
 ## Submission
 
-svyrcs 0.3.0 — new submission.
+svyrcs 0.4.0 — new submission.
 
 The package fits restricted cubic splines inside `survey` models, so that exposure-response curves
 for complex survey data (NHANES and similar) are estimated with sampling weights and design-based
@@ -61,9 +61,14 @@ guarded with `skip_if_not_installed()`.
 
 ## Dependencies
 
-`Imports` is limited to `ggplot2`, `rlang`, `stats` and `survey`. `survival`, `rms`, `mitools`,
-`mice`, `haven`, `knitr`, `rmarkdown` and `testthat` are in `Suggests` and are used only where
-guarded.
+`Imports` is limited to `rlang`, `stats` and `survey` — 11 packages including their recursive
+dependencies. `ggplot2`, `survival`, `rms`, `mitools`, `mice`, `haven`, `knitr`, `rmarkdown` and
+`testthat` are in `Suggests` and are used only where guarded.
+
+`ggplot2` is suggested rather than imported even though plotting is a headline feature: `plot()`
+falls back to an equivalent base graphics implementation when ggplot2 is absent, so nothing is lost.
+The `autoplot()` method is attached to `ggplot2::autoplot` by delayed S3 registration
+(`S3method(ggplot2::autoplot, svyrcs)`), so the generic is never required at load time.
 
 The package deliberately does not depend on `rms`, even though it implements the same spline basis:
 the two agree to about 1e-14, and avoiding the dependency also avoids `rms`'s `datadist` global

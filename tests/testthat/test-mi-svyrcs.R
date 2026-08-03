@@ -127,9 +127,10 @@ test_that("an ordinary fit says nothing about imputation", {
 })
 
 test_that("summary and plot work on an imputed fit", {
+  skip_if_not_installed("ggplot2")
   fit <- svyrcs(bmi ~ rcs(age, 4) + sex + tchol, design = mi_design())
   expect_output(print(summary(fit)), "Curve shape")
-  p <- autoplot(fit)
+  p <- ggplot2::autoplot(fit)
   expect_s3_class(p, "ggplot")
   expect_equal(nrow(p$data), 200L)
   expect_silent(invisible(ggplot2::ggplot_build(p)))
