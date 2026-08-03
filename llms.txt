@@ -44,7 +44,7 @@ fit
 #>   Overall association  F = 43.58 on 3 and 31 df,  p = 3.12e-11
 #>   Non-linearity        F = 51.70 on 2 and 31 df,  p = 1.34e-10
 
-plot(fit)                          # ggplot curve with confidence band
+plot(fit)                          # curve with confidence band (ggplot2 if installed)
 summary(fit)                       # turning points, where the band excludes the null
 predict(fit, x = c(25, 30, 35))    # estimates at values you choose
 ```
@@ -101,6 +101,17 @@ fixed several things that are easy to get wrong when doing this by hand:
 | [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) plus the `datadist` global option | knots stored on the fitted model | [`predict()`](https://rdrr.io/r/stats/predict.html) on new data can never silently re-derive different knots, and there is no global state to keep in sync |
 | subgroup curves from separate stratified fits | one interaction model, curves via a selection matrix | separate fits cannot produce a *p* for interaction, and estimate the covariate effects independently; the matrix form also keeps `Cov(main, interaction)` in the standard error, which adding the two variances would drop |
 | [`mitools::MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)’s degrees of freedom for imputed data | Barnard-Rubin degrees of freedom, per curve point | `MIcombine()`’s rule is unbounded — it returns thousands, or `Inf`, against a design with 31 df — so intervals come out far too narrow; the corrected value is bounded by the complete-data df and exact when nothing is imputed |
+
+## Dependencies
+
+`Imports` is `survey`, `rlang` and `stats` — 11 packages including their
+own dependencies.
+
+`ggplot2` is suggested, not required.
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) uses it when it
+is installed and falls back to an equivalent base graphics plot when it
+is not, so nothing is lost by leaving it out. `autoplot()`, and
+modifying a plot with `+`, do need it.
 
 ## Documentation
 

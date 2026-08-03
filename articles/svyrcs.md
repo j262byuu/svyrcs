@@ -488,6 +488,10 @@ interval, which is not nothing.
   on your own fit.
 - Effect modification by a *continuous* variable, and three-way
   interactions, are not supported. Group modifiers are (see above).
+- `ggplot2` is optional:
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) falls back to
+  base graphics without it, but `autoplot()` and modifying a plot with
+  `+` need it.
 - Analyses of a subsample with its own weight (for instance the NHANES
   fasting subsample) need that subsample’s weight in
   [`svydesign()`](https://rdrr.io/pkg/survey/man/svydesign.html); the

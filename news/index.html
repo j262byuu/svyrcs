@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,18 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.4.0" id="svyrcs-040">svyrcs 0.4.0<a class="anchor" aria-label="anchor" href="#svyrcs-040"></a></h2>
+<ul><li>
+<strong><code>ggplot2</code> moved from <code>Imports</code> to <code>Suggests</code>.</strong> The hard dependency chain drops from 27 packages to 11, six of which needed compilation. Plotting is not lost: <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> uses ggplot2 when it is installed and draws an equivalent base graphics plot when it is not.</li>
+<li>
+<code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> gains a <code>backend</code> argument (<code>"auto"</code>, <code>"ggplot2"</code>, <code>"base"</code>) so either path can be requested explicitly.</li>
+<li>
+<strong>Bug fix:</strong> <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> returned the fit rather than the <code>ggplot</code>, so the documented idiom <code>plot(fit) + ggplot2::labs(...)</code> silently evaluated to <code>NULL</code> instead of modifying the plot. ggplot2’s <code>+</code> accepts a non-ggplot left operand without erroring, so neither users nor <code>R CMD check</code> would have noticed. <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> now returns the <code>ggplot</code> invisibly on the ggplot2 path.</li>
+<li>
+<strong>Breaking:</strong> <code>autoplot(fit)</code> now needs <code><a href="https://ggplot2.tidyverse.org" class="external-link">library(ggplot2)</a></code> first. With ggplot2 only suggested, the package can no longer re-export the generic; the method is registered on <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">ggplot2::autoplot</a></code> through delayed S3 registration instead. <code>plot(fit)</code> is unaffected.</li>
+<li>Faceted base graphics panels share one y axis. Per-panel axes would make a smaller subgroup effect look identical to a larger one, which is the opposite of what panelling subgroups is for.</li>
+</ul></div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="svyrcs-030">svyrcs 0.3.0<a class="anchor" aria-label="anchor" href="#svyrcs-030"></a></h2>
 <ul><li>
 <code><a href="../reference/svyrcs.html">svyrcs()</a></code> accepts a multiply imputed design, built by passing a <code><a href="https://rdrr.io/pkg/mitools/man/imputationList.html" class="external-link">mitools::imputationList()</a></code> to <code><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">survey::svydesign()</a></code>. The model is fitted in every imputation and combined by Rubin’s rules.</li>
@@ -57,7 +69,7 @@
 <li>Group curves are estimated through a selection matrix on the full coefficient vector, so the standard error for a non-reference group correctly includes the covariance between the main and interaction terms.</li>
 <li>All groups share one reference value so the curves are comparable. <code>ref = "min"</code> and <code>ref = "max"</code> are located on the reference level’s curve, and the output says which level that was.</li>
 <li>
-<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> gains a <code>group</code> argument; <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> colour by group and gain <code>facet = TRUE</code>; <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> report per-group results.</li>
+<code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> gains a <code>group</code> argument; <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code> colour by group and gain <code>facet = TRUE</code>; <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> report per-group results.</li>
 <li>A rank-deficient interaction — the spline collinear with the modifier inside a group, typically when the modifier is derived from the exposure — is now diagnosed as such rather than reported as a missing coefficient.</li>
 <li>Fits without an interaction are unchanged, and a regression test pins their numbers and printed output.</li>
 </ul></div>
@@ -74,7 +86,7 @@
 <li>Reference values may be given directly or chosen as the survey-weighted median, mean or an arbitrary weighted quantile, or as the minimum- or maximum-risk point of the curve.</li>
 <li>Tests of overall association and of non-linearity are reported as design-based <em>F</em> tests (matching <code><a href="https://rdrr.io/pkg/survey/man/regTermTest.html" class="external-link">survey::regTermTest()</a></code>) alongside the chi-square form.</li>
 <li>
-<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>, <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> and <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> methods.</li>
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>, <code>autoplot()</code> and <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> methods.</li>
 <li>
 <code>nhanes_bmi</code>, a public-domain NHANES extract with linked mortality follow-up, for examples and tests.</li>
 </ul></div>

@@ -23,7 +23,7 @@ autoplot(
 )
 
 # S3 method for class 'svyrcs'
-plot(x, ...)
+plot(x, ..., backend = c("auto", "ggplot2", "base"))
 ```
 
 ## Arguments
@@ -66,15 +66,43 @@ plot(x, ...)
   An object from
   [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md).
 
+- backend:
+
+  Which graphics system to draw with. `"auto"` (default) uses ggplot2
+  when it is installed and base graphics otherwise; `"ggplot2"` and
+  `"base"` force one or the other. Forcing `"ggplot2"` without the
+  package installed is an error.
+
 ## Value
 
-A `ggplot` object.
+`autoplot()` always returns a `ggplot` object.
+
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) draws, and what
+it returns depends on the backend it used: the `ggplot` object
+(invisibly) on the ggplot2 path, and the fit itself (invisibly) on the
+base graphics path. Code that relies on the returned `ggplot`, such as
+`plot(fit) + ggplot2::labs(...)`, therefore needs ggplot2 to be
+installed. Pass `backend = "ggplot2"` to make that requirement explicit
+and get a clear error rather than a surprise.
 
 ## Details
 
-The result is an ordinary `ggplot` object, so it can be modified in the
-usual way, for example
+ggplot2 is used when it is installed, and an equivalent base graphics
+plot is drawn when it is not, so plotting always works even though
+ggplot2 is only a suggested dependency. The two look similar but are not
+pixel-identical; use `backend` to force one or the other.
+
+On the ggplot2 path the result is an ordinary `ggplot` object returned
+invisibly, so it can be modified in the usual way:
 `plot(fit) + ggplot2::labs(x = "Body mass index")`.
+
+## Requires ggplot2
+
+`autoplot()` needs ggplot2, which is a suggested rather than a required
+dependency. Because of that this package cannot re-export the generic,
+so `autoplot(fit)` needs
+[`library(ggplot2)`](https://ggplot2.tidyverse.org) first. `plot(fit)`
+works either way, falling back to base graphics.
 
 ## Examples
 
@@ -84,9 +112,17 @@ design <- survey::svydesign(
   nest = TRUE, data = nhanes_bmi
 )
 fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+
+# works with or without ggplot2 installed
 plot(fit)
 
-plot(fit, title = TRUE) + ggplot2::labs(x = "Body mass index (kg/m2)")
+plot(fit, backend = "base", title = TRUE)
 
-#> NULL
+
+# modifying the plot needs ggplot2
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  plot(fit, title = TRUE) + ggplot2::labs(x = "Body mass index (kg/m2)")
+}
+
+
 ```

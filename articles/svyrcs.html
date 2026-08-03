@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -504,6 +504,10 @@ estimated from the design anyway.</li>
 <code><a href="../reference/svyrcs_curve.html">svyrcs_curve()</a></code> on your own fit.</li>
 <li>Effect modification by a <em>continuous</em> variable, and three-way
 interactions, are not supported. Group modifiers are (see above).</li>
+<li>
+<code>ggplot2</code> is optional: <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> falls back to
+base graphics without it, but <code>autoplot()</code> and modifying a
+plot with <code>+</code> need it.</li>
 <li>Analyses of a subsample with its own weight (for instance the NHANES
 fasting subsample) need that subsample’s weight in
 <code><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign()</a></code>; the shipped data carries only the MEC exam

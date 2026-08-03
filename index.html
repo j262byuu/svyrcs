@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -90,7 +90,7 @@
 <span><span class="co">#&gt;   Overall association  F = 43.58 on 3 and 31 df,  p = 3.12e-11</span></span>
 <span><span class="co">#&gt;   Non-linearity        F = 51.70 on 2 and 31 df,  p = 1.34e-10</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>                          <span class="co"># ggplot curve with confidence band</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>                          <span class="co"># curve with confidence band (ggplot2 if installed)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>                       <span class="co"># turning points, where the band excludes the null</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">25</span>, <span class="fl">30</span>, <span class="fl">35</span><span class="op">)</span><span class="op">)</span>    <span class="co"># estimates at values you choose</span></span></code></pre></div>
 <p>Anchor the curve wherever the analysis calls for it:</p>
@@ -214,6 +214,12 @@
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level2">
+<h2 id="dependencies">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies"></a>
+</h2>
+<p><code>Imports</code> is <code>survey</code>, <code>rlang</code> and <code>stats</code> — 11 packages including their own dependencies.</p>
+<p><code>ggplot2</code> is suggested, not required. <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> uses it when it is installed and falls back to an equivalent base graphics plot when it is not, so nothing is lost by leaving it out. <code>autoplot()</code>, and modifying a plot with <code>+</code>, do need it.</p>
 </div>
 <div class="section level2">
 <h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a>

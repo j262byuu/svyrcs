@@ -1,5 +1,33 @@
 # Changelog
 
+## svyrcs 0.4.0
+
+- **`ggplot2` moved from `Imports` to `Suggests`.** The hard dependency
+  chain drops from 27 packages to 11, six of which needed compilation.
+  Plotting is not lost:
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) uses ggplot2
+  when it is installed and draws an equivalent base graphics plot when
+  it is not.
+- [`plot()`](https://rdrr.io/r/graphics/plot.default.html) gains a
+  `backend` argument (`"auto"`, `"ggplot2"`, `"base"`) so either path
+  can be requested explicitly.
+- **Bug fix:** [`plot()`](https://rdrr.io/r/graphics/plot.default.html)
+  returned the fit rather than the `ggplot`, so the documented idiom
+  `plot(fit) + ggplot2::labs(...)` silently evaluated to `NULL` instead
+  of modifying the plot. ggplot2’s `+` accepts a non-ggplot left operand
+  without erroring, so neither users nor `R CMD check` would have
+  noticed. [`plot()`](https://rdrr.io/r/graphics/plot.default.html) now
+  returns the `ggplot` invisibly on the ggplot2 path.
+- **Breaking:** `autoplot(fit)` now needs
+  [`library(ggplot2)`](https://ggplot2.tidyverse.org) first. With
+  ggplot2 only suggested, the package can no longer re-export the
+  generic; the method is registered on
+  [`ggplot2::autoplot`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+  through delayed S3 registration instead. `plot(fit)` is unaffected.
+- Faceted base graphics panels share one y axis. Per-panel axes would
+  make a smaller subgroup effect look identical to a larger one, which
+  is the opposite of what panelling subgroups is for.
+
 ## svyrcs 0.3.0
 
 - [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)
@@ -63,8 +91,7 @@
   curve, and the output says which level that was.
 - [`predict()`](https://rdrr.io/r/stats/predict.html) gains a `group`
   argument; [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
-  [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
-  colour by group and gain `facet = TRUE`;
+  `autoplot()` colour by group and gain `facet = TRUE`;
   [`print()`](https://rdrr.io/r/base/print.html) and
   [`summary()`](https://rdrr.io/r/base/summary.html) report per-group
   results.
@@ -109,8 +136,7 @@ First release.
   alongside the chi-square form.
 - [`print()`](https://rdrr.io/r/base/print.html),
   [`summary()`](https://rdrr.io/r/base/summary.html),
-  [`plot()`](https://rdrr.io/r/graphics/plot.default.html),
-  [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html), `autoplot()`
   and [`predict()`](https://rdrr.io/r/stats/predict.html) methods.
 - `nhanes_bmi`, a public-domain NHANES extract with linked mortality
   follow-up, for examples and tests.
