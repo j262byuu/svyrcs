@@ -60,8 +60,15 @@ fmt_test <- function(tt, label, width = 20L) {
   if (is.na(tt$F)) {
     return(sprintf("  %-*s not estimable (a linear term only)", width, label))
   }
-  sprintf("  %-*s F = %s on %d and %d df,  p %s%s", width, label,
-          fmt_num(tt$F, 4), tt$df1, round(tt$df2),
+  ## Under imputation the denominator df is not a whole number, and rounding it to one would hide
+  ## the Barnard-Rubin adjustment that is the whole point.
+  df2 <- if (isTRUE(all.equal(tt$df2, round(tt$df2)))) {
+    format(round(tt$df2))
+  } else {
+    formatC(tt$df2, format = "f", digits = 1)
+  }
+  sprintf("  %-*s F = %s on %d and %s df,  p %s%s", width, label,
+          fmt_num(tt$F, 4), tt$df1, df2,
           if (tt$p_F < 2e-16) "" else "= ", fmt_p(tt$p_F))
 }
 
@@ -86,6 +93,15 @@ print.svyrcs <- function(x, ...) {
   if (isTRUE(x$n_dropped > 0L)) {
     cat(sprintf("  Dropped    %s rows with missing values\n",
                 format(x$n_dropped, big.mark = ",")))
+  }
+  if (!is.null(x$imputations)) {
+    imp <- x$imputations
+    cat(sprintf("  Imputed    m = %d, fraction of missing information %s (median %s)\n",
+                imp$m,
+                paste0(fmt_num(imp$fmi_range[1L], 2), " to ", fmt_num(imp$fmi_range[2L], 2)),
+                fmt_num(imp$fmi_median, 2)))
+    cat(sprintf("             degrees of freedom reduced from %s by Barnard-Rubin\n",
+                format(round(imp$degf_complete, 1))))
   }
   cat("\n")
   cat(fmt_test(x$tests$overall, "Overall association"), "\n")

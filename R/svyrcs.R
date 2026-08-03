@@ -39,12 +39,12 @@ collect_rcs_calls <- function(e, acc = list()) {
 ## the joint test over the spline block *and* its interactions -- "is the exposure associated with
 ## the outcome in any group?" -- and the per-group and interaction tests are added alongside. Keeping
 ## the same two names in both shapes means code that reads fit$tests$overall keeps working.
-assemble_tests <- function(beta, V, term, modifier, degf) {
+assemble_tests <- function(beta, V, term, modifier, degf, mi = NULL) {
   spline_cols <- spline_colnames(term$label, term$nk)
 
   if (is.null(modifier)) {
     L <- selection_matrix(names(beta), spline_cols, NULL)
-    return(group_tests(beta, V, L, degf))
+    return(group_tests(beta, V, L, degf, mi))
   }
 
   int_cols <- unlist(modifier$columns, use.names = FALSE)
@@ -53,20 +53,32 @@ assemble_tests <- function(beta, V, term, modifier, degf) {
                 unlist(lapply(modifier$columns, function(cols) cols[-1L]), use.names = FALSE))
 
   by_group <- lapply(modifier$levels, function(g) {
-    group_tests(beta, V, selection_matrix(names(beta), spline_cols, modifier$columns[[g]]), degf)
+    group_tests(beta, V, selection_matrix(names(beta), spline_cols, modifier$columns[[g]]), degf,
+                mi)
   })
   names(by_group) <- modifier$levels
 
-  itests <- interaction_tests(beta, V, modifier, degf)
+  itests <- interaction_tests(beta, V, modifier, degf, mi)
 
   list(
-    overall = wald_block(beta[joint], V[joint, joint, drop = FALSE], degf, "overall association"),
+    overall = wald_block(beta[joint], V[joint, joint, drop = FALSE], degf, "overall association",
+                         mi_subset(mi, joint)),
     nonlinear = wald_block(beta[joint_nl], V[joint_nl, joint_nl, drop = FALSE], degf,
-                           "non-linearity"),
+                           "non-linearity", mi_subset(mi, joint_nl)),
     interaction = itests$interaction,
     shape = itests$shape,
     by_group = by_group
   )
+}
+
+## The single fitting step, shared by the ordinary and the multiply imputed branches so the two
+## cannot drift apart.
+fit_one <- function(fit_formula, design, family, is_cox, ...) {
+  if (is_cox) {
+    survey::svycoxph(fit_formula, design = design, ...)
+  } else {
+    survey::svyglm(fit_formula, design = design, family = family %||% stats::gaussian(), ...)
+  }
 }
 
 ## Detect a Surv() response, whether written bare or namespace-qualified as survival::Surv().
@@ -93,6 +105,8 @@ is_surv_call <- function(e) {
 #'   estimates one curve per group and tests whether they differ; see the section below.
 #' @param design A survey design object, as built by [survey::svydesign()]. Subset it with
 #'   [subset()] before passing it in; the degrees of freedom are taken from the design you pass.
+#'   A multiply imputed design, built by passing a `mitools::imputationList()` to
+#'   [survey::svydesign()], is also accepted; see the section below.
 #' @param family Family for the [survey::svyglm()] path. Use `quasibinomial()` for a binary outcome
 #'   (odds ratios), `quasipoisson()` for counts or rates (rate ratios), or the default
 #'   `gaussian()` for a continuous outcome (mean differences). Ignored for Cox models.
@@ -138,6 +152,28 @@ is_surv_call <- function(e) {
 #' All groups share one reference value, so that the curves are comparable; `ref = "min"` and
 #' `ref = "max"` are located on the reference level's curve, which the printed output states.
 #'
+#' @section Multiply imputed designs:
+#' Pass a design built from a `mitools::imputationList()` and the model is fitted in every
+#' imputation and combined by Rubin's rules. Knots and the reference value are computed **once**, as
+#' the average of the survey-weighted quantiles across imputations, and then held fixed: if each
+#' imputation chose its own knots, the coefficient vectors would not be estimates of the same
+#' parameters and Rubin's rules would not apply.
+#'
+#' The curve then carries two extra columns, `df` and `fmi`: the degrees of freedom used at that
+#' point and the fraction of missing information there.
+#'
+#' \strong{On the degrees of freedom.} `mitools::MIcombine()` reports
+#' \eqn{(m - 1)(1 + 1/r)^2}, which is unbounded above — against the design shipped with this package,
+#' which has 31 degrees of freedom, it returns values in the thousands or `Inf`. Using that for a
+#' *t* quantile would give confidence intervals far too narrow. `svyrcs` applies the Barnard-Rubin
+#' correction instead, which bounds the result by the complete-data degrees of freedom and returns
+#' exactly `degf(design)` when there is nothing to impute. The same reasoning applies to the joint
+#' tests, whose denominator degrees of freedom are adjusted the same way rather than taken from the
+#' Li-Raghunathan-Rubin rule, which ignores the survey design entirely.
+#'
+#' Building the imputations is not this package's job — use `mice` or similar, then hand the
+#' completed datasets over.
+#'
 #' @section Why not just use `rms`:
 #' `rms::rcs()` gives the same basis, but `rms` fitting functions do not know about sampling weights,
 #' clustering or stratification, and `survey` has no spline helper. `svyrcs` bridges the two: the
@@ -180,10 +216,15 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
                    weighted_knots = TRUE, n = 200, range = NULL, level = 0.95, ...) {
   cl <- match.call()
 
-  if (!inherits(design, c("survey.design", "svyrep.design"))) {
+  if (!inherits(design, c("survey.design", "svyrep.design")) && !is_mi_design(design)) {
     stop_svyrcs("`design` must be a survey design object from survey::svydesign() or ",
-                "survey::svrepdesign(); got ", class(design)[1L])
+                "survey::svrepdesign(), or a multiply imputed design built from ",
+                "mitools::imputationList(); got ", class(design)[1L])
   }
+  ## Both branches work from a list of component designs -- length 1 for an ordinary design, m for
+  ## an imputed one -- so knot placement, reference values and fitting stay a single piece of code.
+  designs <- as_design_list(design)
+  imputed <- is_mi_design(design)
   if (!inherits(formula, "formula") || length(formula) != 3L) {
     stop_svyrcs("`formula` must be a two-sided model formula, such as ",
                 "outcome ~ rcs(bmi, 4) + age")
@@ -202,15 +243,18 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
 
   rcs_call <- rcs_calls[[1L]]
   var <- deparse1(rcs_call[[2L]])
-  if (is.null(design$variables[[var]])) {
+  if (is.null(designs[[1L]]$variables[[var]])) {
     stop_svyrcs("the exposure '", var, "' is not a variable in `design`")
   }
   knot_arg <- if (!is.null(rcs_call$knots)) rcs_call$knots else
     if (length(rcs_call) >= 3L) rcs_call[[3L]] else 4
-  knot_spec <- eval(knot_arg, envir = design$variables, enclos = environment(formula))
+  knot_spec <- eval(knot_arg, envir = designs[[1L]]$variables, enclos = environment(formula))
 
-  ## Resolve the knots up front so they are fixed for fitting, prediction and plotting alike.
-  xvals <- as.numeric(design$variables[[var]])
+  ## Resolve the knots up front so they are fixed for fitting, prediction and plotting alike. Under
+  ## imputation this is not a convenience but a requirement: if each imputation derived its own
+  ## knots, the coefficient vectors would not estimate the same parameters and Rubin's rules would
+  ## not apply.
+  xvals <- unlist(lapply(designs, function(d) as.numeric(d$variables[[var]])), use.names = FALSE)
   knots <- if (length(knot_spec) == 1L && weighted_knots) {
     if (!is_count(knot_spec)) {
       stop_svyrcs("`knots` of length 1 is read as the number of knots and must be a whole number ",
@@ -218,7 +262,7 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
     }
     nk <- as.integer(round(knot_spec))
     probs <- harrell_knot_probs(nk)
-    kn <- unname(weighted_quantile(var, design, probs))
+    kn <- unname(pooled_weighted_quantile(var, designs, probs))
     rcs_knots(xvals, kn, var = var)
   } else {
     rcs_knots(xvals, knot_spec, var = var)
@@ -238,13 +282,16 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
     if (!is.null(family)) {
       warning("`family` is ignored for a Surv() response", call. = FALSE)
     }
-    model <- survey::svycoxph(fit_formula, design = design, ...)
-  } else {
-    model <- survey::svyglm(fit_formula, design = design,
-                            family = family %||% stats::gaussian(), ...)
   }
 
-  degf <- survey::degf(design)
+  if (imputed) {
+    degf <- shared_degf(designs)
+    fits <- lapply(designs, function(d) fit_one(fit_formula, d, family, is_cox, ...))
+    model <- pool_fits(fits, degf)
+  } else {
+    degf <- survey::degf(designs[[1L]])
+    model <- fit_one(fit_formula, designs[[1L]], family, is_cox, ...)
+  }
   term <- find_rcs_term(model, var)
   spline_coef_index(model, term)  # validates the main effects are present
   modifier <- find_modifier(model, term)
@@ -252,15 +299,28 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   V <- stats::vcov(model)
 
   curve <- svyrcs_curve(model, var = var, ref = ref, ref_prob = ref_prob, n = n, range = range,
-                        level = level, design = design, degf = degf)
-  tests <- assemble_tests(beta, V, term, modifier, degf)
+                        level = level, design = designs, degf = degf)
+  tests <- assemble_tests(beta, V, term, modifier, degf, mi_context(model))
   meas <- effect_measure(model)
 
+  ## Counts come from a component fit: the pooled shim is a list, so `model$n` would read its own
+  ## element rather than the Cox model's.
+  rep_fit <- if (imputed) model$fits[[1L]] else model
   ## nobs() on a coxph object returns the number of *events* (its effective sample size for AIC),
   ## not the number of observations, so ask the model directly on the Cox path.
-  n_used <- if (is_cox) as.integer(model$n) else as.integer(stats::nobs(model))
-  n_design <- nrow(design$variables)
-  nevents <- if (is_cox) as.integer(model$nevent) else NA_integer_
+  n_used <- if (is_cox) as.integer(rep_fit$n) else as.integer(stats::nobs(rep_fit))
+  n_design <- nrow(designs[[1L]]$variables)
+  nevents <- if (is_cox) as.integer(rep_fit$nevent) else NA_integer_
+
+  imputation_info <- if (!imputed) NULL else {
+    fmi <- curve$fmi
+    list(
+      m = model$m,
+      degf_complete = degf,
+      fmi_median = if (is.null(fmi)) NA_real_ else stats::median(fmi, na.rm = TRUE),
+      fmi_range = if (is.null(fmi)) c(NA_real_, NA_real_) else range(fmi, na.rm = TRUE)
+    )
+  }
 
   structure(
     list(
@@ -284,6 +344,7 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
       n = n_used,
       n_dropped = as.integer(n_design - n_used),
       nevents = nevents,
+      imputations = imputation_info,
       level = level,
       weighted_knots = isTRUE(weighted_knots) && length(knot_spec) == 1L,
       model = model,
