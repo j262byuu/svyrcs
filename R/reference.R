@@ -25,7 +25,10 @@ NULL
 
 ## Returns list(value, method). `curve_fun(x0, xs)` must return a data frame with columns x and
 ## estimate, i.e. the curve referenced at x0.
-resolve_ref <- function(ref, xvals, design, var, ref_prob = 0.5, curve_fun = NULL,
+## `designs` is always a list of component designs -- length 1 for an ordinary fit, m for a multiply
+## imputed one. Weighted references are averaged over it so that every imputation is anchored at the
+## same value.
+resolve_ref <- function(ref, xvals, designs, var, ref_prob = 0.5, curve_fun = NULL,
                         range = NULL, meas = NULL, grid_n = 500L) {
   xr <- range(xvals, na.rm = TRUE)
 
@@ -56,19 +59,20 @@ resolve_ref <- function(ref, xvals, design, var, ref_prob = 0.5, curve_fun = NUL
     if (!is.numeric(p) || length(p) != 1L || is.na(p) || p <= 0 || p >= 1) {
       stop_svyrcs("`ref_prob` must be a single number strictly between 0 and 1; got ", format(p))
     }
-    value <- if (!is.null(design)) {
-      unname(weighted_quantile(var, design, p))
+    value <- if (!is.null(designs)) {
+      unname(pooled_weighted_quantile(var, designs, p))
     } else {
       unname(stats::quantile(xvals, p, na.rm = TRUE))
     }
     method <- if (ref == "median") "weighted median" else paste0("weighted ", p * 100, "th percentile")
-    if (is.null(design)) method <- sub("weighted", "unweighted", method)
+    if (is.null(designs)) method <- sub("weighted", "unweighted", method)
     return(list(value = value, method = method))
   }
 
   if (ref == "mean") {
-    value <- if (!is.null(design)) weighted_mean(var, design) else mean(xvals, na.rm = TRUE)
-    return(list(value = value, method = if (is.null(design)) "unweighted mean" else "weighted mean"))
+    value <- if (!is.null(designs)) pooled_weighted_mean(var, designs) else mean(xvals, na.rm = TRUE)
+    return(list(value = value,
+                method = if (is.null(designs)) "unweighted mean" else "weighted mean"))
   }
 
   ## "min" / "max": locate the extremum of the curve itself.
@@ -76,8 +80,8 @@ resolve_ref <- function(ref, xvals, design, var, ref_prob = 0.5, curve_fun = NUL
     stop_svyrcs("`ref = \"", ref, "\"` needs the fitted curve; use svyrcs() or svyrcs_curve()")
   }
   rng <- range %||% unname(stats::quantile(xvals, c(0.01, 0.99), na.rm = TRUE))
-  provisional_x0 <- if (!is.null(design)) {
-    unname(weighted_quantile(var, design, 0.5))
+  provisional_x0 <- if (!is.null(designs)) {
+    unname(pooled_weighted_quantile(var, designs, 0.5))
   } else {
     stats::median(xvals, na.rm = TRUE)
   }
