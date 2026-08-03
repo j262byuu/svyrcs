@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,21 @@
       <small>Source: <a href="https://github.com/j262byuu/svyrcs/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.4.1" id="svyrcs-041">svyrcs 0.4.1<a class="anchor" aria-label="anchor" href="#svyrcs-041"></a></h2>
+<p>Findings from an adversarial verification sweep. None of them produced a wrong number, but several let a doubtful situation pass without saying so.</p>
+<ul><li>
+<strong>Ordered factors work as effect modifiers.</strong> They use polynomial contrasts, so their model matrix columns are <code>agegrp.L</code> and <code>agegrp.Q</code> and a level name never appears in a coefficient name; constructing columns from level names could never match. Group curves are now built from the contrast matrix, which also covers Helmert and any user-supplied contrasts. Treatment contrasts give bit-identical results to before.</li>
+<li>
+<strong>A rank-deficient design now warns on every entry point instead of erroring on one.</strong> Previously <code><a href="../reference/svyrcs.html">svyrcs()</a></code> refused a fit that <code><a href="../reference/svyrcs_curve.html">svyrcs_curve()</a></code> would happily produce a confidence band for – the same data giving opposite answers depending on how you came in. Both now warn that the design cannot identify the model; tests report <code>NA</code> rather than aborting the analysis.</li>
+<li>
+<strong>Evaluating outside the observed exposure range warns.</strong> A restricted cubic spline is linear beyond the outer knots, so <code>predict(fit, x = -50)</code> on a BMI model returned a number silently. <code>ref</code> outside the range is still an error, because anchoring there makes <em>every</em> estimate an extrapolation rather than just the point asked for.</li>
+<li>
+<strong><code>ref = "min"</code> and <code>ref = "max"</code> say when the extremum is at the range boundary.</strong> On a monotone curve the “minimum-risk point” is just the end of the plotting grid, which is a property of <code>range</code> rather than a turning point in the data.</li>
+<li>A log link on a gaussian family reports <code>"Ratio"</code>, not <code>"RR"</code>: it is a ratio of means, not a risk ratio. Count and binary families are unaffected.</li>
+<li>Non-finite estimates, which perfect separation produces, are now flagged instead of landing silently in the curve.</li>
+<li>Two error messages written for specific situations were unreachable and have been fixed: colliding weighted quantiles now report the collision and the number of distinct values, rather than the number of knots that survived deduplication; and imputations with mismatched coefficients name the imputation at fault, rather than failing inside <code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply()</a></code>.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="svyrcs-040">svyrcs 0.4.0<a class="anchor" aria-label="anchor" href="#svyrcs-040"></a></h2>
 <ul><li>
