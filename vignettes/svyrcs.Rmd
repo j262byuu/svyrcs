@@ -200,6 +200,58 @@ Some details worth knowing:
   supported.
 * `predict(fit, x = ..., group = "Female")` gives numbers for one group.
 
+## Missing data
+
+The shipped data has missing cholesterol for 649 people. Everything above quietly dropped them.
+Multiple imputation is the usual alternative, and `svyrcs` consumes the result: build the
+imputations however you like, wrap them in `mitools::imputationList()`, and pass the resulting
+design.
+
+```{r mi, eval = requireNamespace("mice", quietly = TRUE) && requireNamespace("mitools", quietly = TRUE), message = FALSE}
+library(mice)
+library(mitools)
+
+vars <- c("age", "sex", "race", "bmi", "tchol", "hdl", "time", "event")
+imp <- mice(nhanes_bmi[vars], m = 5, method = "pmm", maxit = 3, printFlag = FALSE, seed = 1)
+
+completed <- lapply(1:5, function(i) {
+  cbind(complete(imp, i), nhanes_bmi[c("psu", "strata", "weight")])
+})
+
+mi_design <- svydesign(
+  id = ~psu, strata = ~strata, weights = ~weight,
+  nest = TRUE, data = imputationList(completed)
+)
+
+fit_mi <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex + tchol, design = mi_design)
+fit_mi
+```
+
+Two things are worth understanding here.
+
+**Knots and the reference are fixed before any model is fitted**, as the average of the
+survey-weighted quantiles across imputations. This is not a convenience: if each imputation chose its
+own knots, the five coefficient vectors would be estimates of five different parameterisations and
+Rubin's rules would not apply to them.
+
+**The degrees of freedom are not `mitools`'.** `MIcombine()` reports `(m-1)(1+1/r)^2`, which has no
+upper bound — on this design, which has 31 degrees of freedom, it returns numbers in the thousands
+and sometimes `Inf`. Feeding that to a *t* quantile would give confidence intervals far too narrow,
+the same error as using a normal quantile but worse. `svyrcs` applies the Barnard-Rubin correction,
+which is bounded by the complete-data degrees of freedom:
+
+```{r mi-df, eval = requireNamespace("mice", quietly = TRUE) && requireNamespace("mitools", quietly = TRUE)}
+head(predict(fit_mi, x = c(18, 22, 27, 35, 45)))
+```
+
+The `df` column sits at or below 31 and drops where the fraction of missing information (`fmi`) is
+highest. When nothing in the model is imputed, `fmi` is zero, `df` is exactly 31, and the result is
+identical to the complete-data fit.
+
+The joint tests are treated the same way. Their denominator degrees of freedom are adjusted rather
+than taken from the usual multiple-imputation rule, which is derived from the imputation structure
+alone and ignores the survey design.
+
 ## Knots
 
 Four knots at Harrell's recommended quantiles is the default, and is a reasonable choice for most
@@ -262,7 +314,6 @@ Confidence intervals then use a *t* quantile on `degf(design)` rather than a nor
 * One spline exposure per model. Fit separate models, or use `svyrcs_curve()` on your own fit.
 * Effect modification by a *continuous* variable, and three-way interactions, are not supported.
   Group modifiers are (see above).
-* Multiply imputed designs (`svyimputationList`) are not handled.
 * Analyses of a subsample with its own weight (for instance the NHANES fasting subsample) need that
   subsample's weight in `svydesign()`; the shipped data carries only the MEC exam weight.
 
