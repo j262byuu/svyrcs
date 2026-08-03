@@ -70,6 +70,10 @@ falls back to an equivalent base graphics implementation when ggplot2 is absent,
 The `autoplot()` method is attached to `ggplot2::autoplot` by delayed S3 registration
 (`S3method(ggplot2::autoplot, svyrcs)`), so the generic is never required at load time.
 
+A dedicated continuous integration job installs only the hard dependencies plus what the test suite
+itself needs, and asserts that ggplot2 really is absent before running, so the base graphics fallback
+is exercised in a real environment rather than only under mocking.
+
 The package deliberately does not depend on `rms`, even though it implements the same spline basis:
 the two agree to about 1e-14, and avoiding the dependency also avoids `rms`'s `datadist` global
 option.
