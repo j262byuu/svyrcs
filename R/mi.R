@@ -51,16 +51,21 @@ pool_fits <- function(fits, degf) {
   m <- length(fits)
   if (m < 2L) stop_svyrcs("pooling needs at least 2 imputations; got ", m)
 
-  betas <- vapply(fits, stats::coef, numeric(length(stats::coef(fits[[1L]]))))
-  if (!is.matrix(betas)) betas <- matrix(betas, nrow = 1L)
-  nms <- names(stats::coef(fits[[1L]]))
-  rownames(betas) <- nms
-
-  if (any(vapply(fits, function(f) !identical(names(stats::coef(f)), nms), logical(1L)))) {
-    stop_svyrcs("the imputations produced models with different coefficients. This happens when a ",
-                "factor has levels present in some imputations but not others, or when a fit is ",
-                "rank deficient in only some of them.")
+  ## Compare the coefficient names before building the matrix. vapply() with a fixed FUN.VALUE
+  ## length fails first otherwise, with an internal message about lengths that says nothing about
+  ## the actual cause.
+  coefs <- lapply(fits, stats::coef)
+  nms <- names(coefs[[1L]])
+  differs <- vapply(coefs, function(b) !identical(names(b), nms), logical(1L))
+  if (any(differs)) {
+    culprit <- which(differs)[1L]
+    stop_svyrcs("the imputations produced models with different coefficients: imputation ", culprit,
+                " has ", length(coefs[[culprit]]), " where imputation 1 has ", length(nms),
+                ". This happens when a factor has levels present in some imputations but not ",
+                "others, or when a fit is rank deficient in only some of them.")
   }
+
+  betas <- matrix(unlist(coefs, use.names = FALSE), nrow = length(nms), dimnames = list(nms, NULL))
 
   beta_bar <- rowMeans(betas)
   Ubar <- Reduce(`+`, lapply(fits, stats::vcov)) / m

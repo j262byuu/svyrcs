@@ -1,3 +1,33 @@
+# svyrcs 0.4.1
+
+Findings from an adversarial verification sweep. None of them produced a wrong number, but several
+let a doubtful situation pass without saying so.
+
+* **Ordered factors work as effect modifiers.** They use polynomial contrasts, so their model matrix
+  columns are `agegrp.L` and `agegrp.Q` and a level name never appears in a coefficient name;
+  constructing columns from level names could never match. Group curves are now built from the
+  contrast matrix, which also covers Helmert and any user-supplied contrasts. Treatment contrasts
+  give bit-identical results to before.
+* **A rank-deficient design now warns on every entry point instead of erroring on one.** Previously
+  `svyrcs()` refused a fit that `svyrcs_curve()` would happily produce a confidence band for -- the
+  same data giving opposite answers depending on how you came in. Both now warn that the design
+  cannot identify the model; tests report `NA` rather than aborting the analysis.
+* **Evaluating outside the observed exposure range warns.** A restricted cubic spline is linear
+  beyond the outer knots, so `predict(fit, x = -50)` on a BMI model returned a number silently.
+  `ref` outside the range is still an error, because anchoring there makes *every* estimate an
+  extrapolation rather than just the point asked for.
+* **`ref = "min"` and `ref = "max"` say when the extremum is at the range boundary.** On a monotone
+  curve the "minimum-risk point" is just the end of the plotting grid, which is a property of
+  `range` rather than a turning point in the data.
+* A log link on a gaussian family reports `"Ratio"`, not `"RR"`: it is a ratio of means, not a risk
+  ratio. Count and binary families are unaffected.
+* Non-finite estimates, which perfect separation produces, are now flagged instead of landing
+  silently in the curve.
+* Two error messages written for specific situations were unreachable and have been fixed: colliding
+  weighted quantiles now report the collision and the number of distinct values, rather than the
+  number of knots that survived deduplication; and imputations with mismatched coefficients name the
+  imputation at fault, rather than failing inside `vapply()`.
+
 # svyrcs 0.4.0
 
 * **`ggplot2` moved from `Imports` to `Suggests`.** The hard dependency chain drops from 27 packages

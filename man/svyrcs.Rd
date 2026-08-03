@@ -75,7 +75,9 @@ returns one curve per level of the modifier. Because it is a single model, the c
 are shared across groups and a genuine interaction test is available; fitting each subgroup
 separately gives neither. \code{sex * rcs(bmi, 4)} is equivalent.
 
-The modifier must be a factor, character or logical variable. Two extra tests are then reported:
+The modifier must be a factor, character or logical variable; ordered factors and other contrast
+codings are handled, because group curves are built from the contrast matrix rather than from
+level names. Two extra tests are then reported:
 \describe{
 \item{Interaction}{Are the spline-by-group terms jointly zero, i.e. does the association differ
 between groups at all?}
@@ -86,6 +88,25 @@ plus the overall and non-linearity tests within each group.
 
 All groups share one reference value, so that the curves are comparable; \code{ref = "min"} and
 \code{ref = "max"} are located on the reference level's curve, which the printed output states.
+}
+
+\section{What is warned about}{
+
+Some situations are legitimate but easy to enter by accident, so they warn rather than fail:
+evaluating the curve outside the observed exposure range, which a restricted cubic spline will do
+silently because it is linear beyond the outer knots; a design whose degrees of freedom cannot
+identify the spline, where the estimates stand but the intervals do not; and non-finite estimates
+from a model that did not converge. A reference value outside the observed range is refused
+outright instead, because it would make every estimate an extrapolation rather than the one point
+asked for.
+}
+
+\section{Size of the returned object}{
+
+\code{fit$model} keeps the fitted model, which keeps the survey design, which keeps the data. A fit on
+the shipped 10,617-row design is about 9 MB, and a multiply imputed one is that again per
+imputation -- roughly 47 MB at \code{m = 5}. That is the price of being able to run your own
+diagnostics on \code{fit$model}; drop it before saving a large batch of fits if size matters.
 }
 
 \section{Multiply imputed designs}{

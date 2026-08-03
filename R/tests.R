@@ -15,9 +15,16 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
   }
   Vinv <- tryCatch(solve(V), error = function(e) NULL)
   if (is.null(Vinv)) {
-    stop_svyrcs("the ", what, " test is not computable: the spline covariance block is singular. ",
-                "This usually means too many knots for the amount of information in the data; ",
-                "try fewer knots.")
+    ## Warn rather than stop. Erroring here made svyrcs() refuse a fit that svyrcs_curve() would
+    ## happily produce a band for -- the same data giving opposite answers depending on the entry
+    ## point. The curve is still meaningful as a point estimate, so report the test as unavailable
+    ## and let the caller see the rest.
+    warning("the ", what, " test is not computable: the spline covariance block is singular, so ",
+            "the design cannot identify this model. This usually means too many knots for the ",
+            "amount of information in the data; try fewer knots. Estimates are still shown, but ",
+            "their confidence intervals are not trustworthy.", call. = FALSE)
+    return(list(chisq = NA_real_, F = NA_real_, df1 = df1, df2 = degf,
+                p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else NA_real_))
   }
   chisq <- as.numeric(t(beta) %*% Vinv %*% beta)
   Fstat <- chisq / df1

@@ -2,7 +2,7 @@
 
 ## Submission
 
-svyrcs 0.4.0 — new submission.
+svyrcs 0.4.1 — new submission.
 
 The package fits restricted cubic splines inside `survey` models, so that exposure-response curves
 for complex survey data (NHANES and similar) are estimated with sampling weights and design-based
@@ -42,6 +42,9 @@ and convert cleanly.
 
 The local run also uses `--no-manual`, since no LaTeX is installed there. The manual builds on the
 GitHub Actions platforms.
+
+A third note may appear locally, `checking for future file timestamps ... unable to verify current
+time`, when the machine cannot reach a time server. It is transient and environmental.
 
 ## Shipped data
 

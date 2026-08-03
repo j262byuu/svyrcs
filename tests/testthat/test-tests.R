@@ -49,9 +49,12 @@ test_that("3 knots leave a single non-linear column", {
   expect_true(is.finite(fit$tests$nonlinear$p_F))
 })
 
-test_that("a singular spline block gives an informative error rather than a LAPACK message", {
+test_that("a singular spline block warns and reports the test as unavailable", {
   b <- c(1, 2)
   V <- matrix(c(1, 1, 1, 1), 2, 2)  # exactly singular
-  expect_error(wald_block(b, V, 30, "overall association"), class = "svyrcs_error")
-  expect_error(wald_block(b, V, 30, "overall association"), "singular")
+  expect_warning(out <- wald_block(b, V, 30, "overall association"), "singular")
+  ## warn rather than stop, so that svyrcs() and svyrcs_curve() behave the same way on the same data
+  expect_true(is.na(out$chisq))
+  expect_true(is.na(out$p_F))
+  expect_equal(out$df1, 2L)
 })
