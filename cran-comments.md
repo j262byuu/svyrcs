@@ -56,7 +56,7 @@ Examples run in well under 5 seconds each. Three survival examples, which fit su
 models, are wrapped in `\donttest{}` to keep the total example time low; they run cleanly under
 `--run-donttest`, which was included in every check above.
 
-The test suite is 598 tests and takes about 40 seconds. Tests that need a `Suggests` package are
+The test suite is 634 tests and takes about 60 seconds. Tests that need a `Suggests` package are
 guarded with `skip_if_not_installed()`.
 
 ## Dependencies
