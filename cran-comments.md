@@ -20,7 +20,12 @@ Checked with `--as-cran` on:
 | Ubuntu 24.04, x86_64-pc-linux-gnu (GitHub Actions) | 4.6.1 |
 | Ubuntu 24.04, x86_64-pc-linux-gnu (GitHub Actions) | R-devel (2026-06-21 r90185) |
 | Ubuntu 24.04, x86_64-pc-linux-gnu (GitHub Actions) | 4.5.3 |
+| Ubuntu 24.04, x86_64-pc-linux-gnu, hard dependencies only (GitHub Actions) | 4.6.1 |
 | Windows 11, x86_64-w64-mingw32 (local) | 4.5.2 |
+
+The hard-dependencies-only run installs nothing from `Suggests` beyond what the test suite itself
+needs, and asserts that ggplot2 is absent before checking, so the base graphics fallback is
+exercised rather than assumed. It reported `Status: OK` with 570 tests passing and 15 skipped.
 
 ## R CMD check results
 
@@ -30,7 +35,7 @@ Checked with `--as-cran` on:
   Maintainer: 'Xiaoyu Zong <j262byuu@gmail.com>'
   New submission
 
-All five GitHub Actions platforms reported `Status: OK` with no notes at all. The local run reports
+All six GitHub Actions platforms reported `Status: OK` with no notes at all. The local run reports
 one additional note, `Files 'README.md' or 'NEWS.md' cannot be checked without 'pandoc' being
 installed`, which is an artefact of that machine: both files were verified separately with pandoc
 and convert cleanly.
