@@ -1,0 +1,53 @@
+## `meta` is supplied by utils::citation() when the package is installed. Fall back to reading the
+## DESCRIPTION directly so that citation() also works from a source checkout.
+if (!exists("meta") || is.null(meta)) {
+  meta <- utils::packageDescription("svyrcs")
+}
+version <- meta$Version
+if (is.null(version) || is.na(version)) version <- "0.3.0"
+
+citHeader(
+  "To cite svyrcs in publications, please cite the package. If the analysis relies on the ",
+  "restricted cubic spline parameterisation or on design-based variance estimation, please also ",
+  "cite Harrell (2015) and Lumley (2010), listed below."
+)
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "{svyrcs}: Restricted Cubic Splines for Complex Survey Data",
+  author   = person("Xiaoyu", "Zong"),
+  year     = "2026",
+  note     = paste("R package version", version),
+  url      = "https://github.com/j262byuu/svyrcs",
+  textVersion = paste0(
+    "Zong X (2026). svyrcs: Restricted Cubic Splines for Complex Survey Data. ",
+    "R package version ", version, ". https://github.com/j262byuu/svyrcs"
+  )
+)
+
+bibentry(
+  bibtype   = "Book",
+  title     = "Regression Modeling Strategies",
+  author    = person("Frank E.", "Harrell Jr."),
+  year      = "2015",
+  edition   = "2nd",
+  publisher = "Springer",
+  doi       = "10.1007/978-3-319-19425-7",
+  textVersion = paste0(
+    "Harrell FE Jr (2015). Regression Modeling Strategies, 2nd edition. Springer. ",
+    "doi:10.1007/978-3-319-19425-7"
+  )
+)
+
+bibentry(
+  bibtype   = "Book",
+  title     = "Complex Surveys: A Guide to Analysis Using R",
+  author    = person("Thomas", "Lumley"),
+  year      = "2010",
+  publisher = "Wiley",
+  doi       = "10.1002/9780470580066",
+  textVersion = paste0(
+    "Lumley T (2010). Complex Surveys: A Guide to Analysis Using R. Wiley. ",
+    "doi:10.1002/9780470580066"
+  )
+)
