@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,37 @@
       <small>Source: <a href="https://github.com/j262byuu/svyrcs/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.6.3" id="svyrcs-063">svyrcs 0.6.3<a class="anchor" aria-label="anchor" href="#svyrcs-063"></a></h2>
+<p>Three numerical concerns raised by the 0.6.0 review were left open because they had never been reproduced. Adversarial construction settled all three. Two were wrong about the mechanism, and one of those was still right about the consequence.</p>
+<div class="section level3">
+<h3 id="nothing-here-changes-an-estimate-0-6-3">Nothing here changes an estimate<a class="anchor" aria-label="anchor" href="#nothing-here-changes-an-estimate-0-6-3"></a></h3>
+<p>Every change is a warning or a printed explanation. If a number moved, that is a bug in this release.</p>
+</div>
+<div class="section level3">
+<h3 id="knot-spacing-is-named-as-a-cause-0-6-3">Knot spacing is named as a cause<a class="anchor" aria-label="anchor" href="#knot-spacing-is-named-as-a-cause-0-6-3"></a></h3>
+<ul><li>
+<code><a href="../reference/rcs_knots.html">rcs_knots()</a></code> now warns when two knots are separated by less than 1e-6 of the knot range. The exact-duplicate check has always caught an exposure whose quantiles collapse; what it cannot see is a cluster carrying floating-point jitter – values below a limit of detection replaced by a constant are the common case – where two knots differ in the 16th significant digit.</li>
+<li>Measured against <code><a href="https://rdrr.io/r/splines/ns.html" class="external-link">splines::ns()</a></code> on identical knots, the fitted curve is accurate to 4e-12 at a relative gap of 1e-6 and wrong by 2% at 1e-16. The rank-deficiency warning already fired from about 1e-6, so nothing was silent, but it blamed the design and suggested more primary sampling units, which cannot help a spacing problem.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="a-missing-confidence-band-is-no-longer-silent-0-6-3">A missing confidence band is no longer silent<a class="anchor" aria-label="anchor" href="#a-missing-confidence-band-is-no-longer-silent-0-6-3"></a></h3>
+<ul><li>A curve with finite estimates and non-finite standard errors now warns, and says the problem is the variance rather than the model’s convergence. Previously the check looked at the estimates only, so the entire band could come back <code>NaN</code> with nothing but base R’s “NaNs produced” to show for it.</li>
+<li>This is reachable with a replicate design whose <code>rscales</code> carry negative coefficients – successive difference replication and some Fay variants use them, and <code>survey</code> takes their square root.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="an-unavailable-test-says-which-cause-applies-0-6-3">An unavailable test says which cause applies<a class="anchor" aria-label="anchor" href="#an-unavailable-test-says-which-cause-applies-0-6-3"></a></h3>
+<ul><li>
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> reported every unavailable joint test as “not estimable (a linear term only)”. There are four causes: a genuinely linear block, a singular covariance, a singular within-imputation covariance, and a non-finite covariance. The last three were printed as the first.</li>
+<li>The distinction matters because the fixes are opposite: “a linear term only” says the formula is wrong, a singular covariance says the design cannot support the model.</li>
+<li>A non-finite covariance is now detected explicitly. <code><a href="https://rdrr.io/pkg/Matrix/man/solve-methods.html" class="external-link">solve()</a></code> returns <code>NaN</code> rather than throwing on such a matrix, so that path previously produced no warning at all.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="refuted-0-6-3">Refuted<a class="anchor" aria-label="anchor" href="#refuted-0-6-3"></a></h3>
+<ul><li>Ill-conditioned but invertible Wald blocks are <strong>not</strong> a hazard, and the suspected gap runs the other way: <code>warn_if_rank_deficient()</code> gives way from condition number about 3e7, while the quadratic form stays accurate to 2.8e-8 up to 1e9 and <code><a href="https://rdrr.io/pkg/Matrix/man/solve-methods.html" class="external-link">solve()</a></code> holds to 1e16. Across 1800 constructions – including <code>beta</code> aligned with the smallest eigenvector, the worst case – the worst error obtainable without a warning was 2.8e-8, and the statistic never went negative. A test now pins that ordering, since the margin depends on <code><a href="https://rdrr.io/pkg/Matrix/man/qr-methods.html" class="external-link">qr()</a></code>’s default tolerance.</li>
+<li>Materially negative contrast variances are unreachable. Whatever the <code>mse</code> setting, a replicate covariance is a weighted sum of rank-1 outer products and so is positive semi-definite by construction; 72 adversarial designs produced no negative eigenvalue. The existing clamp handles what remains, which is floating-point noise.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.2" id="svyrcs-062">svyrcs 0.6.2<a class="anchor" aria-label="anchor" href="#svyrcs-062"></a></h2>
 <p>Validation, labelling and documentation honesty, from the same review as 0.6.1. Two items change output and are called out as such.</p>
