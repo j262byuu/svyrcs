@@ -19,9 +19,11 @@ attributes \code{knots} and \code{nk}.
 }
 \description{
 Builds a restricted cubic spline (natural spline) basis for use inside a model formula. The basis
-is Harrell's truncated power parameterisation and is numerically identical to \code{rms::rcs()}, but it
-stores its knots on the returned object and registers a \code{\link[stats:makepredictcall]{stats::makepredictcall()}} method, so a
-model fitted with \code{rcs()} reuses exactly the same knots when predicting on new data.
+is Harrell's truncated power parameterisation and matches \code{rms::rcs()} -- both the basis and, since
+0.6.2, the default knot placement, including the small-sample rule that moves the outer knots to
+the fifth smallest and fifth largest values below 100 observations. Unlike \code{rms}, it stores its
+knots on the returned object and registers a \code{\link[stats:makepredictcall]{stats::makepredictcall()}} method, so a model fitted
+with \code{rcs()} reuses exactly the same knots when predicting on new data.
 }
 \details{
 Because a restricted cubic spline with \code{k} knots contributes \code{k - 1} columns, the first of which
@@ -30,8 +32,9 @@ is what \code{\link[=svyrcs]{svyrcs()}} reports as the non-linearity \emph{p}-va
 }
 \section{Masking \code{rms}}{
 
-Attaching \code{svyrcs} after \code{rms} masks \code{rms::rcs()}. The two bases agree to about 1e-14, so results
-are unchanged; use \code{rms::rcs()} explicitly if you need the \code{rms} version.
+Attaching \code{svyrcs} after \code{rms} masks \code{rms::rcs()}. The two bases agree to about 1e-14 and the
+default knot placement agrees exactly, so results are unchanged; use \code{rms::rcs()} explicitly if
+you want the \code{rms} version anyway.
 }
 
 \examples{

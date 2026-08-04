@@ -1,15 +1,15 @@
 ## Harrell's recommended knot placement (Regression Modeling Strategies, 2nd ed., Table 2.3).
+##
+## Computed rather than tabulated. The published table rounds to four decimals, and using those
+## rounded values put the 7-knot placement about 0.004 away from `Hmisc::rcspline.eval()`; the table
+## is itself `seq(outer, 1 - outer, length.out = nk)`, so deriving it removes the discrepancy.
 harrell_knot_probs <- function(nk) {
-  switch(
-    as.character(nk),
-    "3" = c(0.10, 0.50, 0.90),
-    "4" = c(0.05, 0.35, 0.65, 0.95),
-    "5" = c(0.05, 0.275, 0.50, 0.725, 0.95),
-    "6" = c(0.05, 0.23, 0.41, 0.59, 0.77, 0.95),
-    "7" = c(0.025, 0.1833, 0.3417, 0.50, 0.6583, 0.8167, 0.975),
+  if (!nk %in% 3:7) {
     stop_svyrcs("`knots` must be a count between 3 and 7, or an explicit vector of at least 3 ",
                 "knot locations; got ", nk)
-  )
+  }
+  outer <- if (nk > 6L) 0.025 else if (nk > 3L) 0.05 else 0.1
+  seq(outer, 1 - outer, length.out = nk)
 }
 
 #' Knot locations for a restricted cubic spline
@@ -38,6 +38,10 @@ rcs_knots <- function(x, knots = 4, var = "x") {
   if (!length(xo)) stop_svyrcs("the exposure '", var, "' is entirely missing")
 
   if (length(knots) == 1L) {
+    if (!is.numeric(knots) || !is.finite(knots)) {
+      stop_svyrcs("`knots` of length 1 is read as the number of knots and must be a finite whole ",
+                  "number between 3 and 7; got ", format(knots))
+    }
     if (!is_count(knots)) {
       stop_svyrcs("`knots` of length 1 is read as the number of knots and must be a whole number ",
                   "between 3 and 7; got ", format(knots))
@@ -50,9 +54,11 @@ rcs_knots <- function(x, knots = 4, var = "x") {
                   "', but it has ", length(unique(xo)))
     }
     kn <- unname(stats::quantile(xo, harrell_knot_probs(nk), na.rm = TRUE, names = FALSE))
+    kn <- small_sample_outer_knots(kn, xo)
   } else {
-    if (!is.numeric(knots) || anyNA(knots)) {
-      stop_svyrcs("`knots` must be a numeric vector without missing values")
+    if (!is.numeric(knots) || !all(is.finite(knots))) {
+      stop_svyrcs("`knots` must be a numeric vector of finite values; got ",
+                  paste(format(knots[!is.finite(knots)]), collapse = ", "))
     }
     kn <- sort(unique(as.numeric(knots)))
     nk <- length(kn)
@@ -68,6 +74,25 @@ rcs_knots <- function(x, knots = 4, var = "x") {
                 "knots or supply explicit knot locations.")
   }
   kn
+}
+
+## Harrell's small-sample adjustment: below 100 observations the outer knots are moved to the fifth
+## smallest and fifth largest values, because an extreme quantile of a small sample is an unstable
+## place to anchor a spline tail.
+##
+## This reproduces `Hmisc::rcspline.eval()`'s `length(xx) < 100` branch. Interior knots are untouched,
+## which is why the two agreed on those all along; only the outer pair moved. Adopted so that the
+## default placement matches `rms`, not only the basis given identical knots.
+##
+## At very small n the replacements can fall inside the interior knots -- for `1:10` the result sorts
+## to 4.15, 5, 6, 6.85. `Hmisc` behaves the same way, and diverging here would reintroduce exactly
+## the sort of private rule this change exists to remove.
+small_sample_outer_knots <- function(kn, xo) {
+  if (length(xo) >= 100L) return(kn)
+  xs <- sort(xo)
+  kn[1L] <- xs[5L]
+  kn[length(kn)] <- xs[length(xs) - 4L]
+  sort(unique(kn))
 }
 
 ## The numerical core: Harrell's truncated power basis, normalised by (t_k - t_1)^2.
@@ -95,9 +120,11 @@ rcs_design_matrix <- function(x, knots) {
 #' Restricted cubic spline basis
 #'
 #' Builds a restricted cubic spline (natural spline) basis for use inside a model formula. The basis
-#' is Harrell's truncated power parameterisation and is numerically identical to `rms::rcs()`, but it
-#' stores its knots on the returned object and registers a [stats::makepredictcall()] method, so a
-#' model fitted with `rcs()` reuses exactly the same knots when predicting on new data.
+#' is Harrell's truncated power parameterisation and matches `rms::rcs()` -- both the basis and, since
+#' 0.6.2, the default knot placement, including the small-sample rule that moves the outer knots to
+#' the fifth smallest and fifth largest values below 100 observations. Unlike `rms`, it stores its
+#' knots on the returned object and registers a [stats::makepredictcall()] method, so a model fitted
+#' with `rcs()` reuses exactly the same knots when predicting on new data.
 #'
 #' Because a restricted cubic spline with `k` knots contributes `k - 1` columns, the first of which
 #' is `x` itself, a test that the remaining columns are jointly zero is a test of non-linearity. This
@@ -112,8 +139,9 @@ rcs_design_matrix <- function(x, knots) {
 #'   attributes `knots` and `nk`.
 #'
 #' @section Masking `rms`:
-#' Attaching `svyrcs` after `rms` masks `rms::rcs()`. The two bases agree to about 1e-14, so results
-#' are unchanged; use `rms::rcs()` explicitly if you need the `rms` version.
+#' Attaching `svyrcs` after `rms` masks `rms::rcs()`. The two bases agree to about 1e-14 and the
+#' default knot placement agrees exactly, so results are unchanged; use `rms::rcs()` explicitly if
+#' you want the `rms` version anyway.
 #'
 #' @seealso [svyrcs()], [rcs_knots()]
 #'

@@ -179,8 +179,10 @@ d1_test <- function(Qbar, Ubar, B, m, dfcom) {
 
   ## Reiter's expansion contains 1/(t - 4) and so is undefined at t = k(m - 1) <= 4 -- reachable
   ## with, say, m = 3 and a two-parameter block. mitml returns NaN there. Fall back to the
-  ## complete-data degrees of freedom, which is defined, conservative, and what the reference
-  ## distribution tends to when there is little missing information.
+  ## complete-data degrees of freedom, which is defined and is what the reference distribution tends
+  ## to when there is little missing information. It is a substitution, not a validated rule, and not
+  ## necessarily conservative: with a large fraction of missing information it can exceed an
+  ## appropriate imputation-limited denominator. More imputations is the real fix.
   if (is.finite(dfcom) && t <= 4) {
     warning("the small-sample correction for a multi-parameter imputation test needs ",
             "k(m - 1) > 4, but k = ", k, " and m = ", m, " give ", t, ". Using the complete-data ",

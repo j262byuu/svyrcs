@@ -1,6 +1,6 @@
 Package: svyrcs
 Title: Restricted Cubic Splines for Complex Survey Data
-Version: 0.6.1
+Version: 0.6.2
 Authors@R:
     person("Xiaoyu", "Zong", , "j262byuu@gmail.com", role = c("aut", "cre"))
 Description: Fits and summarises restricted cubic spline (RCS) models for
@@ -23,10 +23,11 @@ Imports:
     survey (>= 4.0)
 Suggests:
     ggplot2,
-    mitml,
     haven,
+    Hmisc,
     knitr,
     mice,
+    mitml,
     mitools,
     rmarkdown,
     rms,

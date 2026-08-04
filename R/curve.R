@@ -88,11 +88,9 @@ has_offset <- function(fit) {
 }
 
 log_link_measure <- function(fit, fname) {
-  if (grepl("poisson|binomial", fname)) {
-    if (has_offset(fit)) "Rate ratio" else "Mean ratio"
-  } else {
-    "Ratio"
-  }
+  if (grepl("binomial", fname)) return("RR")
+  if (grepl("poisson", fname)) return(if (has_offset(fit)) "Rate ratio" else "Mean ratio")
+  "Ratio"
 }
 
 ## Effect measure and whether the linear-predictor contrast should be exponentiated.
@@ -106,9 +104,9 @@ effect_measure <- function(fit) {
   switch(
     link,
     logit = list(measure = "OR", exponentiate = TRUE, null = 1),
-    ## A log link is always a ratio, but of what depends on the model. With person-time in an
-    ## offset it is a rate ratio; a count model without one compares expected counts; on a gaussian
-    ## family it is a ratio of means. Calling all of them "RR" claims more than was fitted.
+    ## A log link is always a ratio, but of what depends on the family as well as the offset. On a
+    ## binomial family the fitted mean is a probability, so the contrast is a risk ratio however the
+    ## model is offset; only a count family with person-time gives a rate.
     log = list(measure = log_link_measure(fit, fname), exponentiate = TRUE, null = 1),
     identity = list(measure = "Difference", exponentiate = FALSE, null = 0),
     {
@@ -256,10 +254,26 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
     stop_svyrcs("`level` must be a single number strictly between 0 and 1")
   }
 
+  if (!is.null(range)) {
+    if (!is.numeric(range) || length(range) != 2L || !all(is.finite(range))) {
+      stop_svyrcs("`range` must be two finite numbers giving the exposure range to estimate over; ",
+                  "got ", paste(format(range), collapse = ", "))
+    }
+    if (range[1L] == range[2L]) {
+      stop_svyrcs("`range` must span an interval; both values are ", format(range[1L]))
+    }
+    range <- sort(range)
+  }
   xvals <- exposure_values(fit, term$var, designs)
   rng <- range %||% exposure_range(xvals, designs, term$var)
   grid <- if (!is.null(at)) {
     if (!is.numeric(at) || !length(at)) stop_svyrcs("`at` must be a non-empty numeric vector")
+    ## A non-finite `at` used to flow through and produce non-finite rows, which the convergence
+    ## warning then blamed on the model -- a misleading diagnosis of a perfectly good fit.
+    if (!all(is.finite(at))) {
+      stop_svyrcs("`at` must contain only finite values; got ",
+                  paste(format(unique(at[!is.finite(at)])), collapse = ", "))
+    }
     as.numeric(at)
   } else {
     if (!is_count(n) || n < 2) stop_svyrcs("`n` must be a whole number of at least 2; got ", n)
