@@ -187,6 +187,17 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #' The curve then carries two extra columns, `df` and `fmi`: the degrees of freedom used at that
 #' point and the fraction of missing information there.
 #'
+#' \strong{The joint tests.} The overall, non-linearity, interaction and per-group tests use
+#' **D1** (Li, Raghunathan and Rubin 1991): the statistic is
+#' \eqn{\bar{Q}' [(1 + r)\bar{U}]^{-1} \bar{Q} / k} with
+#' \eqn{r = (1 + 1/m)\,\mathrm{tr}(B\bar{U}^{-1})/k}, referred to an *F* distribution whose
+#' denominator degrees of freedom come from Reiter (2007). Reiter's correction is the one that
+#' accounts for a finite complete-data degrees of freedom, which is exactly the survey situation.
+#'
+#' Where \eqn{k(m-1) \le 4} that correction is undefined -- it contains \eqn{1/(k(m-1)-4)} -- and
+#' the package warns and falls back to the complete-data degrees of freedom. Raising the number of
+#' imputations is the fix.
+#'
 #' \strong{On the degrees of freedom.} `mitools::MIcombine()` reports
 #' \eqn{(m - 1)(1 + 1/r)^2}, which is unbounded above — against the design shipped with this package,
 #' which has 31 degrees of freedom, it returns values in the thousands or `Inf`. Using that for a
@@ -378,7 +389,7 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   degf <- resolve_df(df, degf)
   curve <- svyrcs_curve(model, var = var, ref = ref, ref_prob = ref_prob, n = n, range = range,
                         level = level, design = designs, degf = degf)
-  tests <- assemble_tests(beta, V, term, modifier, degf, mi_context(model))
+  tests <- assemble_tests(beta, V, term, modifier, degf, mi_context(model, degf))
   meas <- effect_measure(model)
 
   ## Counts come from a component fit: the pooled shim is a list, so `model$n` would read its own

@@ -276,7 +276,7 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
   sp_idx <- match(spline_colnames(term$label, term$nk), names(beta))
   warn_if_rank_deficient(V[sp_idx, sp_idx, drop = FALSE], term$var)
 
-  mi <- mi_context(fit)
+  mi <- mi_context(fit, degf)
   curve_at <- function(x0, xs, g = NULL) {
     L <- group_selection(names(beta), term, modifier, g)
     contrast_estimates(xs, x0, term$knots, beta, V, degf, level, meas$exponentiate, L, mi)

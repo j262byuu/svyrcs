@@ -126,29 +126,92 @@ print.svyrcs_mifit <- function(x, ...) {
 ## gives intervals far too narrow. The Barnard-Rubin correction bounds the result by the
 ## complete-data degrees of freedom, which is what a survey analysis needs.
 ##
-## Vectorised over `u` (within-imputation variance) and `b` (between-imputation variance). Returns
-## nu_com exactly where b <= 0, so a fit with nothing to impute is exact rather than merely close.
+## Vectorised over `u` (within-imputation variance) and `b` (between-imputation variance).
+##
+## The formula is followed literally, including its behaviour at zero between-imputation variance,
+## where it returns (nu_com + 1) nu_com / (nu_com + 3) rather than nu_com itself -- about 6% below
+## the complete-data value at nu_com = 31. That is a known conservatism of the approximation, not a
+## real loss of information. Earlier versions short-circuited to nu_com there, which made a fit with
+## nothing to impute reproduce the complete-data one exactly but silently departed from the
+## published rule; matching mice:::barnard.rubin is worth more than that convenience.
 barnard_rubin_df <- function(u, b, m, nu_com) {
-  out <- rep(nu_com, length.out = max(length(u), length(b)))
-  live <- b > 0 & u > 0
-  ## With nu_com = Inf the complete-data correction has nothing to bound, so Barnard-Rubin reduces to
-  ## Rubin's original (m - 1)(1 + 1/r)^2. Guard it explicitly: (Inf + 1)/(Inf + 3) is NaN.
-  if (!is.finite(nu_com)) {
-    if (!any(live)) return(out)
-    r <- (1 + 1 / m) * b[live] / u[live]
-    out[live] <- (m - 1) * (1 + 1 / r)^2
-    return(out)
-  }
-  if (!any(live)) return(out)
+  n <- max(length(u), length(b))
+  u <- rep(u, length.out = n)
+  b <- rep(b, length.out = n)
+  lambda <- ifelse(u + (1 + 1 / m) * b > 0, (1 + 1 / m) * b / (u + (1 + 1 / m) * b), 0)
 
-  bb <- b[live]
-  uu <- u[live]
-  r <- (1 + 1 / m) * bb / uu
-  nu_old <- (m - 1) * (1 + 1 / r)^2
-  gamma <- (1 + 1 / m) * bb / (uu + (1 + 1 / m) * bb)
-  nu_obs <- (nu_com + 1) / (nu_com + 3) * nu_com * (1 - gamma)
-  out[live] <- nu_old * nu_obs / (nu_old + nu_obs)
-  out
+  ## With nu_com = Inf there is no complete-data df to bound, so this reduces to Rubin's original
+  ## (m - 1)/lambda^2. Guard it explicitly: (Inf + 1)/(Inf + 3) is NaN.
+  if (!is.finite(nu_com)) {
+    return(ifelse(lambda > 0, (m - 1) / lambda^2, Inf))
+  }
+  tmp <- (1 - lambda) * (1 + nu_com) * nu_com
+  (m - 1) * tmp / ((nu_com + 3) * (m - 1) + lambda^2 * tmp)
+}
+
+## D1: the multi-parameter pooling rule of Li, Raghunathan and Rubin (1991), with the small-sample
+## denominator degrees of freedom of Reiter (2007).
+##
+## Two things distinguish it from the obvious construction, and both matter. The statistic uses
+## (1 + r) Ubar rather than the pooled total covariance Ubar + (1 + 1/m) B; and the denominator df
+## comes from Reiter's formula, which accounts for a finite complete-data df -- exactly the survey
+## situation, where the design supplies only a few dozen degrees of freedom.
+##
+## Earlier versions of this package collapsed r to a scalar and reused the scalar Barnard-Rubin
+## formula. That was a plausible-looking construction of my own rather than a named rule, which is
+## worse than either: a reader cannot tell what was computed. mitml:::.D1 is the reference
+## implementation and the tests check against it.
+##
+## `r` is the average relative increase in variance due to nonresponse across the block.
+d1_test <- function(Qbar, Ubar, B, m, dfcom) {
+  k <- length(Qbar)
+  Uinv <- tryCatch(solve(Ubar), error = function(e) NULL)
+  if (is.null(Uinv)) return(NULL)
+
+  r <- (1 + 1 / m) * sum(diag(B %*% Uinv)) / k
+  r <- max(r, 0)
+  Ttilde <- (1 + r) * Ubar
+  Tinv <- tryCatch(solve(Ttilde), error = function(e) NULL)
+  if (is.null(Tinv)) return(NULL)
+
+  stat <- as.numeric(t(Qbar) %*% Tinv %*% Qbar) / k
+  t <- k * (m - 1)
+
+  ## Reiter's expansion contains 1/(t - 4) and so is undefined at t = k(m - 1) <= 4 -- reachable
+  ## with, say, m = 3 and a two-parameter block. mitml returns NaN there. Fall back to the
+  ## complete-data degrees of freedom, which is defined, conservative, and what the reference
+  ## distribution tends to when there is little missing information.
+  if (is.finite(dfcom) && t <= 4) {
+    warning("the small-sample correction for a multi-parameter imputation test needs ",
+            "k(m - 1) > 4, but k = ", k, " and m = ", m, " give ", t, ". Using the complete-data ",
+            "degrees of freedom instead; increase the number of imputations for a better ",
+            "approximation.", call. = FALSE)
+    return(list(F = stat, k = k, v = dfcom, r = r))
+  }
+
+  v <- if (is.finite(dfcom)) {
+    ## Reiter (2007), as implemented in mitml:::.D1.
+    a <- r * t / (t - 2)
+    vstar <- ((dfcom + 1) / (dfcom + 3)) * dfcom
+    c0 <- 1 / (t - 4)
+    c1 <- vstar - 2 * (1 + a)
+    c2 <- vstar - 4 * (1 + a)
+    z <- 1 / c2 +
+      c0 * (a^2 * c1 / ((1 + a)^2 * c2)) +
+      c0 * (8 * a^2 * c1 / ((1 + a) * c2^2) + 4 * a^2 / ((1 + a) * c2)) +
+      c0 * (4 * a^2 / (c2 * c1) + 16 * a^2 * c1 / c2^3) +
+      c0 * (8 * a^2 / c2^2)
+    4 + 1 / z
+  } else if (r <= 0) {
+    ## No between-imputation variance and no complete-data df to bound: the chi-square limit.
+    Inf
+  } else if (t > 4) {
+    4 + (t - 4) * (1 + (1 - 2 / t) / r)^2
+  } else {
+    t * (1 + 1 / k) * (1 + 1 / r)^2 / 2
+  }
+
+  list(F = stat, k = k, v = v, r = r)
 }
 
 ## Fraction of missing information for a scalar estimand.
@@ -158,7 +221,10 @@ fraction_missing <- function(u, b, m) {
 }
 
 ## The `mi` bundle threaded into the contrast engine and the tests.
-mi_context <- function(fit) {
+## `degf` overrides the complete-data degrees of freedom stored on the pooled fit, so that a `df`
+## argument reaches the imputation arithmetic. Without it `df` silently affected only the
+## single-design path.
+mi_context <- function(fit, degf = NULL) {
   if (!inherits(fit, "svyrcs_mifit")) return(NULL)
-  list(Ubar = fit$Ubar, B = fit$B, m = fit$m, degf = fit$degf)
+  list(Ubar = fit$Ubar, B = fit$B, m = fit$m, degf = degf %||% fit$degf)
 }

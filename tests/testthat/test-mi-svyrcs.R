@@ -58,9 +58,9 @@ test_that("the reference is pooled across imputations", {
   expect_gt(diff(range(each)), 0)  # the imputations really do disagree
 })
 
-test_that("with nothing imputed the fit reproduces the complete-data fit exactly", {
+test_that("with nothing imputed the estimates reproduce the complete-data fit exactly", {
   plain <- svyrcs(bmi ~ rcs(age, 4) + sex, design = nhanes_design())
-  imputed <- svyrcs(bmi ~ rcs(age, 4) + sex, design = mi_design_degenerate())
+  imputed <- suppressWarnings(svyrcs(bmi ~ rcs(age, 4) + sex, design = mi_design_degenerate()))
 
   expect_equal(imputed$knots, plain$knots)
   expect_equal(imputed$ref$value, plain$ref$value)
@@ -69,12 +69,21 @@ test_that("with nothing imputed the fit reproduces the complete-data fit exactly
   expect_equal(coef(imputed$model), coef(plain$model))
   expect_equal(unname(vcov(imputed$model)), unname(vcov(plain$model)))
 
+  ## Everything that does not involve a reference distribution is identical.
   expect_equal(imputed$curve$estimate, plain$curve$estimate)
-  expect_equal(imputed$curve$conf.low, plain$curve$conf.low)
-  expect_equal(imputed$curve$conf.high, plain$curve$conf.high)
+  expect_equal(imputed$curve$se, plain$curve$se)
   expect_equal(imputed$tests$overall$F, plain$tests$overall$F)
-  expect_equal(imputed$tests$overall$p_F, plain$tests$overall$p_F)
-  expect_equal(imputed$tests$nonlinear$p_F, plain$tests$nonlinear$p_F)
+  expect_equal(imputed$tests$overall$chisq, plain$tests$overall$chisq)
+
+  ## The intervals and p-values do differ, because the Barnard-Rubin and Reiter formulas return
+  ## (nu + 1) nu / (nu + 3) rather than nu at zero between-imputation variance. Slightly wider
+  ## intervals, and the difference is bounded and in the conservative direction.
+  vstar <- (plain$degf + 1) / (plain$degf + 3) * plain$degf
+  expect_equal(unique(imputed$curve$df), vstar)
+  wider <- imputed$curve$conf.high - imputed$curve$conf.low
+  narrower <- plain$curve$conf.high - plain$curve$conf.low
+  expect_true(all(wider >= narrower - 1e-12))
+  expect_lt(max(wider / narrower), 1.01)
 })
 
 test_that("predict works on an imputed fit and carries the df through", {
