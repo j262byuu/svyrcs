@@ -102,6 +102,10 @@ print.svyrcs <- function(x, ...) {
                 fmt_num(imp$fmi_median, 2)))
     cat(sprintf("             degrees of freedom reduced from %s by Barnard-Rubin\n",
                 format(round(imp$degf_complete, 1))))
+    if (isTRUE(imp$shared_mask_cost > 0L)) {
+      cat(sprintf("             %s further rows dropped so every imputation shares one sample\n",
+                  format(imp$shared_mask_cost, big.mark = ",")))
+    }
   }
   cat("\n")
   cat(fmt_test(x$tests$overall, "Overall association"), "\n")

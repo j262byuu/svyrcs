@@ -1,6 +1,7 @@
 test_that("the median reference is the survey-weighted median, not the sample median", {
   fit <- gaussian_fit()
-  design <- nhanes_design()
+  ## the analytic sample, since that is what the fit is based on
+  design <- nhanes_design()[stats::complete.cases(nhanes_bmi[c("tchol", "bmi", "age", "sex")]), ]
   wq <- as.numeric(coef(survey::svyquantile(~bmi, design, 0.5, na.rm = TRUE, ci = FALSE)))
   expect_equal(fit$ref$value, wq)
   expect_equal(fit$ref$method, "weighted median")
@@ -10,7 +11,8 @@ test_that("the median reference is the survey-weighted median, not the sample me
 
 test_that("the mean reference is the survey-weighted mean", {
   fit <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = nhanes_design(), ref = "mean")
-  wm <- as.numeric(survey::svymean(~bmi, nhanes_design(), na.rm = TRUE))[1L]
+  analytic <- nhanes_design()[stats::complete.cases(nhanes_bmi[c("tchol", "bmi", "age")]), ]
+  wm <- as.numeric(survey::svymean(~bmi, analytic, na.rm = TRUE))[1L]
   expect_equal(fit$ref$value, wm)
   expect_equal(fit$ref$method, "weighted mean")
 })
@@ -18,7 +20,8 @@ test_that("the mean reference is the survey-weighted mean", {
 test_that("an arbitrary weighted quantile can be used as the reference", {
   fit <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = nhanes_design(),
                 ref = "quantile", ref_prob = 0.25)
-  wq <- as.numeric(coef(survey::svyquantile(~bmi, nhanes_design(), 0.25, na.rm = TRUE, ci = FALSE)))
+  analytic <- nhanes_design()[stats::complete.cases(nhanes_bmi[c("tchol", "bmi", "age")]), ]
+  wq <- as.numeric(coef(survey::svyquantile(~bmi, analytic, 0.25, na.rm = TRUE, ci = FALSE)))
   expect_equal(fit$ref$value, wq)
   expect_match(fit$ref$method, "25th percentile")
 })
