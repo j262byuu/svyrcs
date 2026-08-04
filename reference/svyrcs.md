@@ -130,7 +130,11 @@ An object of class `svyrcs`, a list with components:
 
 - measure:
 
-  `"HR"`, `"OR"`, `"RR"` or `"Difference"`.
+  One of `"HR"` (Cox), `"OR"` (logit link), `"RR"` (log link on a
+  binomial family), `"Rate ratio"` (log link on a count family with an
+  offset), `"Mean ratio"` (log link on a count family without one),
+  `"Ratio"` (log link on any other family), or `"Difference"` (identity
+  link). A non-standard link gives `"<link>-scale difference"`.
 
 - model:
 
@@ -196,11 +200,17 @@ matters.
 Pass a design built from a
 [`mitools::imputationList()`](https://rdrr.io/pkg/mitools/man/imputationList.html)
 and the model is fitted in every imputation and combined by Rubin's
-rules. Knots and the reference value are computed **once**, as the
-average of the survey-weighted quantiles across imputations, and then
-held fixed: if each imputation chose its own knots, the coefficient
-vectors would not be estimates of the same parameters and Rubin's rules
-would not apply.
+rules. Knots and the reference value are computed **once** and then held
+fixed: if each imputation chose its own knots, the coefficient vectors
+would not be estimates of the same parameters and Rubin's rules would
+not apply.
+
+Rubin's rules require a *common* parameterisation, not any particular
+way of arriving at one. This package averages the survey-weighted
+quantiles across imputations, which is a convention rather than a
+derivation; the average of quantiles is not in general the quantile of a
+pooled predictive distribution, and for strongly skewed imputations
+another rule could reasonably be preferred.
 
 The curve then carries two extra columns, `df` and `fmi`: the degrees of
 freedom used at that point and the fraction of missing information
@@ -215,9 +225,12 @@ distribution whose denominator degrees of freedom come from Reiter
 complete-data degrees of freedom, which is exactly the survey situation.
 
 Where \\k(m-1) \le 4\\ that correction is undefined – it contains
-\\1/(k(m-1)-4)\\ – and the package warns and falls back to the
-complete-data degrees of freedom. Raising the number of imputations is
-the fix.
+\\1/(k(m-1)-4)\\ – and the package warns and substitutes the
+complete-data degrees of freedom. That substitution is not a validated
+rule and should not be read as conservative: with a large fraction of
+missing information the complete-data value can exceed an appropriate
+imputation-limited denominator. Raising the number of imputations is the
+real fix.
 
 **On the degrees of freedom.**
 [`mitools::MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)
@@ -226,11 +239,12 @@ design shipped with this package, which has 31 degrees of freedom, it
 returns values in the thousands or `Inf`. Using that for a *t* quantile
 would give confidence intervals far too narrow. `svyrcs` applies the
 Barnard-Rubin correction instead, which bounds the result by the
-complete-data degrees of freedom and returns exactly `degf(design)` when
-there is nothing to impute. The same reasoning applies to the joint
-tests, whose denominator degrees of freedom are adjusted the same way
-rather than taken from the Li-Raghunathan-Rubin rule, which ignores the
-survey design entirely.
+complete-data degrees of freedom. It does not reach that bound: with
+nothing to impute the published formula returns \\(\nu + 1)\nu / (\nu +
+3)\\, slightly below `degf(design)`. The same reasoning applies to the
+joint tests, whose denominator degrees of freedom are adjusted the same
+way rather than taken from the Li-Raghunathan-Rubin rule, which ignores
+the survey design entirely.
 
 Building the imputations is not this package's job — use `mice` or
 similar, then hand the completed datasets over.

@@ -1,5 +1,72 @@
 # Changelog
 
+## svyrcs 0.6.2
+
+Validation, labelling and documentation honesty, from the same review as
+0.6.1. Two items change output and are called out as such.
+
+### Changes results
+
+- **Default knot placement now follows Harrell’s small-sample rule.**
+  Below 100 observations the outer knots become the fifth smallest and
+  fifth largest values, rather than plain quantiles. The package claimed
+  to be “numerically identical to
+  [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html)”; that held
+  for the *basis* given the same knots, but not for the default
+  *placement*, which differed for n \< 100. It now agrees with
+  [`Hmisc::rcspline.eval()`](https://rdrr.io/pkg/Hmisc/man/rcspline.eval.html)
+  for every combination of n from 10 to 1000, 3 to 7 knots, and three
+  distributions.
+
+  Knot probabilities are also computed as
+  `seq(outer, 1 - outer, length.out = nk)` rather than read from the
+  published four-decimal table, which had put 7-knot placement about
+  0.004 off.
+
+  **Analyses on fewer than 100 observations will give different
+  results.** Larger samples are unaffected.
+
+- **A log link on a binomial family reports a risk ratio.** It was
+  labelled “Mean ratio”, or “Rate ratio” if the model happened to carry
+  an offset. The fitted mean is a probability, so the contrast is a risk
+  ratio regardless of the offset; only a count family with person-time
+  gives a rate.
+
+### Refuses what it cannot handle
+
+- Non-finite knots — `rcs(x, c(1, 2, Inf))`, `rcs(x, Inf)`, `NaN` —
+  raised a base error or silently produced `NaN` basis columns. They now
+  raise `svyrcs_error`.
+- `range` must be two finite numbers spanning an interval. A length-one,
+  `NA`, `Inf` or degenerate range previously reached
+  [`seq()`](https://rdrr.io/r/base/seq.html) and produced a base error.
+- `at` must be finite. Non-finite values produced non-finite rows that
+  the convergence warning then blamed on the model.
+
+### Documentation now matches the code
+
+- [`?svyrcs`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)
+  listed `measure` values the code had stopped producing. The full set
+  is documented, and a test asserts that every supported family yields
+  one of them, so the contract cannot drift again.
+- The README claimed the Barnard-Rubin degrees of freedom were “exact
+  when nothing is imputed”; 0.6.0 deliberately made them follow the
+  published formula, which returns slightly less.
+  [`?svyrcs`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)
+  said the same thing in different words – “returns exactly
+  `degf(design)` when there is nothing to impute” – and unlike the
+  README that text ships with the package. Both now state the value the
+  formula actually returns. The regression test reads the installed help
+  rather than the README, which is what found the second copy.
+- The `k(m-1) <= 4` fallback is no longer described as conservative.
+  That was an assertion, not a result: with a large fraction of missing
+  information the complete-data value can exceed an appropriate
+  imputation-limited denominator.
+- The imputation section no longer implies Rubin’s rules require
+  averaging per-imputation quantiles for knot placement. They require a
+  common parameterisation; averaging is the convention this package
+  adopts.
+
 ## svyrcs 0.6.1
 
 Three defects found by an independent review, each of which substituted
@@ -287,10 +354,11 @@ so.
   to
   [`survey::svydesign()`](https://rdrr.io/pkg/survey/man/svydesign.html).
   The model is fitted in every imputation and combined by Rubin’s rules.
-- Knots and the reference value are computed once, as the average of the
-  survey-weighted quantiles across imputations, and then held fixed.
+- Knots and the reference value are computed once and then held fixed.
   Without that the per-imputation coefficient vectors would not estimate
-  the same parameters.
+  the same parameters. Rubin’s rules require a common parameterisation,
+  not this particular one; averaging the survey-weighted quantiles is a
+  convention the package adopts.
 - **Confidence intervals use Barnard-Rubin degrees of freedom, not
   [`mitools::MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)’s.**
   [`MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html) omits

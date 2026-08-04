@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -209,7 +209,8 @@
 <code><a href="https://rdrr.io/pkg/mitools/man/MIcombine.html" class="external-link">mitools::MIcombine()</a></code>’s degrees of freedom for imputed data</td>
 <td>Barnard-Rubin degrees of freedom, per curve point</td>
 <td>
-<code>MIcombine()</code>’s rule is unbounded — it returns thousands, or <code>Inf</code>, against a design with 31 df — so intervals come out far too narrow; the corrected value is bounded by the complete-data df and exact when nothing is imputed</td>
+<code>MIcombine()</code>’s rule is unbounded — it returns thousands, or <code>Inf</code>, against a design with 31 df — so intervals come out far too narrow. The corrected value is bounded by the complete-data df; note that the published formula returns slightly less than it even when nothing is imputed, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>ν</mi><mo>+</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mi>ν</mi><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mi>ν</mi><mo>+</mo><mn>3</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(\nu+1)\nu/(\nu+3)</annotation></semantics></math>
+</td>
 </tr>
 </tbody>
 </table>

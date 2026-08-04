@@ -2,9 +2,11 @@
 
 Builds a restricted cubic spline (natural spline) basis for use inside a
 model formula. The basis is Harrell's truncated power parameterisation
-and is numerically identical to
-[`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html), but it
-stores its knots on the returned object and registers a
+and matches [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) –
+both the basis and, since 0.6.2, the default knot placement, including
+the small-sample rule that moves the outer knots to the fifth smallest
+and fifth largest values below 100 observations. Unlike `rms`, it stores
+its knots on the returned object and registers a
 [`stats::makepredictcall()`](https://rdrr.io/r/stats/makepredictcall.html)
 method, so a model fitted with `rcs()` reuses exactly the same knots
 when predicting on new data.
@@ -47,9 +49,10 @@ reports as the non-linearity *p*-value.
 
 Attaching `svyrcs` after `rms` masks
 [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html). The two
-bases agree to about 1e-14, so results are unchanged; use
+bases agree to about 1e-14 and the default knot placement agrees
+exactly, so results are unchanged; use
 [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) explicitly if
-you need the `rms` version.
+you want the `rms` version anyway.
 
 ## See also
 
