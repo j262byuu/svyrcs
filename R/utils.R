@@ -10,6 +10,33 @@ stop_svyrcs <- function(...) {
   ))
 }
 
+## Rows a model fitted from `formula` on `data` would actually use.
+##
+## Evaluating the model frame is the point: it applies the formula's transformations, so a value that
+## only becomes non-finite after evaluation is caught. `complete.cases()` on the raw columns is not
+## equivalent and was the source of a silent knot-placement bug.
+##
+## `na.pass` keeps every row so the result lines up with `data`; non-finite numerics are then treated
+## as unusable, which `is.na()` alone would miss for NaN produced by, say, log() of a negative value.
+analytic_rows <- function(formula, data) {
+  mf <- tryCatch(
+    stats::model.frame(formula, data = data, na.action = stats::na.pass),
+    error = function(e) NULL
+  )
+  if (is.null(mf) || nrow(mf) != nrow(data)) {
+    ## A formula the model frame cannot evaluate row-wise: fall back to the columns it names, which
+    ## is what the previous implementation always did.
+    vars <- intersect(all.vars(formula), names(data))
+    return(stats::complete.cases(data[vars]))
+  }
+  usable <- function(col) {
+    if (is.matrix(col)) return(apply(col, 1L, function(r) all(is.finite(r) | !is.numeric(r))))
+    if (is.numeric(col)) return(is.finite(col))
+    !is.na(col)
+  }
+  Reduce(`&`, lapply(mf, usable))
+}
+
 ## Whether the ggplot2 backend is available.
 ##
 ## A named function rather than an inline requireNamespace() call, so that the fallback branches are

@@ -55,7 +55,9 @@ uses \code{survey::degf(design)}; a number substitutes it; \code{Inf} gives norm
 chi-square-equivalent tests. Under multiple imputation this is the complete-data degrees of
 freedom that the Barnard-Rubin correction starts from.}
 
-\item{...}{Passed on to \code{\link[survey:svycoxph]{survey::svycoxph()}} or \code{\link[survey:svyglm]{survey::svyglm()}}.}
+\item{...}{Passed on to \code{\link[survey:svycoxph]{survey::svycoxph()}} or \code{\link[survey:svyglm]{survey::svyglm()}}. \code{subset} is refused: it would
+be applied after the knots and the reference had already been derived, so subset the design
+instead, with \code{subset(design, ...)}.}
 }
 \value{
 An object of class \code{svyrcs}, a list with components:

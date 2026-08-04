@@ -1,3 +1,34 @@
+# svyrcs 0.6.1
+
+Three defects found by an independent review, each of which substituted a different quantity for the
+one asked for, with nothing in the output to show it. **Results change** for the affected cases.
+
+* **A transformation inside the formula no longer breaks the analytic sample.** The complete-case
+  mask was computed on the raw design columns, so a value that only became non-finite once the
+  formula was evaluated — `log(z)` for `z <= 0`, `1/z` for `z == 0` — passed the mask, was then
+  dropped by the fitting function, and knots, reference and range were derived from rows the model
+  never used. In testing this moved an outer knot by 14.6 units. The mask now comes from an
+  evaluated model frame, and non-finite values count as unusable, not just `NA`.
+
+  This is the same class of defect as the missing-data one fixed in 0.5.0. The rule now is that the
+  analytic sample is *taken from* an evaluated model frame rather than reconstructed alongside one.
+
+* **`subset` is refused** rather than accepted through `...` and applied after the knots were
+  already chosen. Subset the design instead: `svyrcs(f, design = subset(design, cond))`.
+
+* **`svyrcs::rcs()` now freezes its knots for direct model prediction.** `makepredictcall()` matched
+  the bare name only, so `lm(y ~ svyrcs::rcs(x, 4))` re-derived knots from `newdata`: a model trained
+  on an exposure of 1–100 evaluated a prediction grid near 1000 using knots near 1000. This was a
+  regression from 0.5.0, which taught `svyrcs()` to recognise the namespaced form but left the
+  `makepredictcall()` method behind. `svyrcs()` itself was never affected, since it inlines knots
+  before fitting — which is precisely why 786 tests missed it.
+
+* **A named reference on a multiply imputed fit is resolved the way it was at fitting time.**
+  `fit_design()` returned `NULL` for a pooled fit, so `predict(fit, ref = "median")` fell back to an
+  unweighted quantile of the first imputation. Evaluated at the reference the fit was anchored to, it
+  returned -0.0881 instead of 0. The component designs are now reachable, read back from the fits
+  rather than stored again, so the pooled object is the same size as before.
+
 # svyrcs 0.6.0
 
 ## Multiple-imputation joint tests now use a named rule

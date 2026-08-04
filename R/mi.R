@@ -220,6 +220,25 @@ fraction_missing <- function(u, b, m) {
   ifelse(total > 0, (1 + 1 / m) * b / total, 0)
 }
 
+## The component designs behind a pooled fit, for code that needs the weighting.
+##
+## Read back out of the component fits rather than stored alongside them. Storing a second reference
+## made object.size() report 59 MB where 47 MB was already the cost of keeping the fits, and a pooled
+## fit is large enough that even the appearance of duplication is worth avoiding.
+##
+## Without this, fit_design() returned NULL for a pooled fit, and predict(ref = "median") fell back
+## to an unweighted quantile of the first imputation -- a different reference from the one the fit
+## was anchored at.
+mi_designs <- function(fit) {
+  if (!inherits(fit, "svyrcs_mifit")) return(NULL)
+  d <- lapply(fit$fits, function(f) {
+    dd <- f$survey.design
+    if (is.null(dd)) dd <- f$design
+    dd
+  })
+  if (any(vapply(d, is.null, logical(1L)))) NULL else d
+}
+
 ## The `mi` bundle threaded into the contrast engine and the tests.
 ## `degf` overrides the complete-data degrees of freedom stored on the pooled fit, so that a `df`
 ## argument reaches the imputation arithmetic. Without it `df` silently affected only the
