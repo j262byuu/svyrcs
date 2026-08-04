@@ -1,5 +1,56 @@
 # Changelog
 
+## svyrcs 0.5.1
+
+Labelling and documentation, from the same review as 0.5.0. **No
+estimate, interval or p-value changes**, with one exception noted below;
+the compat suite passes unmodified.
+
+The theme is labels that claimed more than the method behind them
+delivered.
+
+- **Ranges in [`summary()`](https://rdrr.io/r/base/summary.html) are now
+  called pointwise.** They come from a pointwise band, so a stretch
+  where the intervals exclude the null is not a simultaneous region and
+  has no family-wise error control — with 200 grid points, some will
+  cross a 95% band by chance even when the curve is flat.
+- **`ref = "min"` and `ref = "max"` state that the anchor is selected
+  from the same data**, and that the uncertainty in its location is not
+  propagated. At the selected point the estimate is the null with zero
+  standard error by construction; that is an artefact of anchoring
+  there, not evidence.
+- **The turning points reported by
+  [`summary()`](https://rdrr.io/r/base/summary.html) are labelled grid
+  extrema**, because they are the extremes of the evaluated curve and
+  can shift when `n` changes.
+- **New `df` argument** on
+  [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)
+  and
+  [`svyrcs_curve()`](https://j262byuu.github.io/svyrcs/reference/svyrcs_curve.md).
+  The design degrees of freedom remain the default, but they are a
+  conservative policy rather than the only correct answer, and the
+  documentation now says so. `df = Inf` gives normal-quantile intervals.
+  Under multiple imputation `df` supplies the complete-data degrees of
+  freedom the Barnard-Rubin correction starts from.
+- **Variance-method wording fixed.** DESCRIPTION, README, the manual and
+  the vignette described everything as Taylor linearisation, but
+  replicate-weight designs are accepted and their variance comes from
+  the replicate weights.
+- **A Poisson model without an offset now reports a mean ratio rather
+  than a rate ratio** — the only labelling change that alters output.
+  With person-time in an offset it reports a rate ratio. This changes
+  `fit$measure` and the axis label, not any number.
+- Effect modifiers coded with `contr.sum`, `contr.helmert`, `contr.poly`
+  or a user-supplied contrast matrix are now covered by tests, and the
+  coding is read from `fit$contrasts` where the fit records it, so a
+  coding passed through `contrasts.arg` is recovered.
+- Removed a `tests/testthat/Rplots.pdf` artefact that had been
+  committed.
+
+Recorded as future work rather than done: a simultaneous confidence
+band, a bootstrap distribution for a selected reference location, and a
+continuous rather than grid-based extremum.
+
 ## svyrcs 0.5.0
 
 ### Results change when data are missing

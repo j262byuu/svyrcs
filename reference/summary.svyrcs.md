@@ -26,8 +26,22 @@ summary(object, ...)
 ## Value
 
 An object of class `summary.svyrcs`, a list with the fit metadata, the
-two tests and a `features` component holding the minimum, the maximum
-and the significant ranges.
+two tests and a `features` component holding the grid minimum, the grid
+maximum, and `significant`: the stretches over which the **pointwise**
+band excludes the null.
+
+## These ranges are pointwise
+
+The band is a pointwise confidence band: each grid point has its own
+interval at the stated level. A stretch where those intervals exclude
+the null is therefore **not** a simultaneous confidence region and
+carries no family-wise error control. With 200 grid points, some will
+cross a 95% pointwise band by chance even when the true curve is flat.
+Read the ranges as a description of where the curve sits relative to the
+null, not as a multiplicity-corrected finding.
+
+The reported lowest and highest points are likewise the extremes of the
+evaluated grid, so they can move a little if `n` changes.
 
 ## Examples
 
@@ -51,9 +65,9 @@ summary(fit)
 #>   Non-linearity        F = 55.21 on 2 and 31 df,  p = 6.07e-11 
 #> 
 #>   Curve shape
-#>     Lowest    bmi = 17.93,  Difference = -20.7 (-25.0, -16.4)
-#>     Highest   bmi = 30.11,  Difference = 0.670 (-0.587, 1.93)
-#>     95% band excludes Difference = 0 over:
+#>     Grid lowest   bmi = 17.93,  Difference = -20.7 (-25.0, -16.4)
+#>     Grid highest  bmi = 30.11,  Difference = 0.670 (-0.587, 1.93)
+#>     Pointwise 95% band excludes Difference = 0 over:
 #>       bmi 17.93 to 27.30  (Difference < 0)
 #>       bmi 27.46 to 28.08  (Difference > 0)
 #>       bmi 38.08 to 49.01  (Difference < 0)

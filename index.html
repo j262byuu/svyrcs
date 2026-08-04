@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,7 +56,7 @@
 <!-- badges: start -->
 
 <p>Restricted cubic splines for complex survey data such as NHANES, with design-based variance estimation.</p>
-<p>Splines and survey designs do not normally meet. <code>rms</code> gives you restricted cubic splines but knows nothing about sampling weights, clustering or stratification; <code>survey</code> handles all three but has no spline helper. <code>svyrcs</code> fits the spline <em>inside</em> a <code>survey</code> model, so point estimates use the weights and the confidence band uses Taylor linearisation on the design degrees of freedom.</p>
+<p>Splines and survey designs do not normally meet. <code>rms</code> gives you restricted cubic splines but knows nothing about sampling weights, clustering or stratification; <code>survey</code> handles all three but has no spline helper. <code>svyrcs</code> fits the spline <em>inside</em> a <code>survey</code> model, so point estimates use the weights and the confidence band uses whatever variance estimator the design implies — Taylor linearisation for an ordinary <code>survey.design</code>, replicate-weight variance for an <code>svyrep.design</code>.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -177,16 +177,15 @@
 </tr>
 <tr>
 <td>chi-square <em>p</em>-values</td>
-<td>design-based <em>F</em> on <code>(df1, degf)</code>
-</td>
-<td>with 31 design degrees of freedom the chi-square test is anti-conservative; the <em>F</em> test matches <code><a href="https://rdrr.io/pkg/survey/man/regTermTest.html" class="external-link">survey::regTermTest()</a></code>
+<td>design-based <em>F</em> on <code>(df1, degf)</code> by default</td>
+<td>with 31 design degrees of freedom the chi-square test is anti-conservative. The design degrees of freedom are a deliberate conservative default, not the only defensible choice; <code>df</code> lets you pick another, including <code>Inf</code>
 </td>
 </tr>
 <tr>
 <td>normal quantile for the confidence band</td>
 <td>
-<em>t</em> quantile on the design df</td>
-<td>a normal quantile gives intervals that are too narrow</td>
+<em>t</em> quantile on the design df by default</td>
+<td>a normal quantile gives intervals that are too narrow when the design has few PSUs; <code>df = Inf</code> restores it if you want it</td>
 </tr>
 <tr>
 <td>knots and reference at unweighted quantiles</td>

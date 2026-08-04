@@ -24,7 +24,8 @@ svyrcs_curve(
   level = 0.95,
   design = NULL,
   degf = NULL,
-  group = NULL
+  group = NULL,
+  df = NULL
 )
 ```
 
@@ -95,6 +96,14 @@ svyrcs_curve(
   When the spline is interacted with an effect modifier, the level or
   levels to estimate. `NULL` (default) returns every level, stacked,
   with a `group` column.
+
+- df:
+
+  Denominator degrees of freedom to use instead of the design's. `NULL`
+  (default) keeps `survey::degf(design)`; a number substitutes it; `Inf`
+  gives normal-quantile intervals. See the note in
+  [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md) on
+  why this is a policy rather than a fixed answer.
 
 ## Value
 

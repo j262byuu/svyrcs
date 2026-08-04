@@ -11,7 +11,7 @@ and the reference value the curve is anchored to."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@ and the reference value the curve is anchored to.</p>
 <span>  n <span class="op">=</span> <span class="fl">200</span>,</span>
 <span>  range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  df <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -112,6 +113,13 @@ always used as given.</p></dd>
 
 <dt id="arg-level">level<a class="anchor" aria-label="anchor" href="#arg-level"></a></dt>
 <dd><p>Confidence level for the band.</p></dd>
+
+
+<dt id="arg-df">df<a class="anchor" aria-label="anchor" href="#arg-df"></a></dt>
+<dd><p>Denominator degrees of freedom for the confidence band and the tests. <code>NULL</code> (default)
+uses <code>survey::degf(design)</code>; a number substitutes it; <code>Inf</code> gives normal-quantile intervals and
+chi-square-equivalent tests. Under multiple imputation this is the complete-data degrees of
+freedom that the Barnard-Rubin correction starts from.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -210,13 +218,27 @@ Li-Raghunathan-Rubin rule, which ignores the survey design entirely.</p>
 completed datasets over.</p>
     </div>
     <div class="section level2">
+    <h2 id="which-degrees-of-freedom">Which degrees of freedom<a class="anchor" aria-label="anchor" href="#which-degrees-of-freedom"></a></h2>
+
+
+<p>By default the confidence band and the tests use <code>survey::degf(design)</code>, the number of primary
+sampling units minus the number of strata. That is a deliberate conservative default rather than
+the only defensible answer: it behaves as though every covariate varied only between PSUs, which
+is right for design variables and cautious for individual-level ones. <code><a href="https://rdrr.io/pkg/survey/man/regTermTest.html" class="external-link">survey::regTermTest()</a></code>
+exposes the same choice for the same reason.</p>
+<p><code>df</code> overrides it. A larger value, or <code>Inf</code> for the normal approximation, gives narrower
+intervals; use it deliberately and say so in the write-up, because with few PSUs the difference is
+not small.</p>
+    </div>
+    <div class="section level2">
     <h2 id="why-not-just-use-rms">Why not just use <code>rms</code><a class="anchor" aria-label="anchor" href="#why-not-just-use-rms"></a></h2>
 
 
 <p><code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code> gives the same basis, but <code>rms</code> fitting functions do not know about sampling weights,
 clustering or stratification, and <code>survey</code> has no spline helper. <code>svyrcs</code> bridges the two: the
 spline is fitted inside a <code>survey</code> model, so point estimates use the weights and the confidence
-band uses Taylor linearisation on the design degrees of freedom.</p>
+band uses the variance estimator the design implies – Taylor linearisation for an ordinary
+design, replicate-weight variance for a replicate design.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -259,14 +281,15 @@ band uses Taylor linearisation on the design degrees of freedom.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Sample     10,617 observations, 1,893 events, 31 design df</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Reference  bmi = 27.13 (minimum-risk point), HR = 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              selected from these data; its own uncertainty is not in the band</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Overall association  F = 48.07 on 3 and 31 df,  p = 9.1e-12 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Non-linearity        F = 56.15 on 2 and 31 df,  p = 4.95e-11 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Curve shape</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     Lowest    bmi = 27.13,  HR = 1.00 (1.00, 1.00)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     Highest   bmi = 17.85,  HR = 2.85 (2.17, 3.75)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     95% band excludes HR = 1 over:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Grid lowest   bmi = 27.13,  HR = 1.00 (1.00, 1.00)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Grid highest  bmi = 17.85,  HR = 2.85 (2.17, 3.75)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Pointwise 95% band excludes HR = 1 over:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       bmi 17.85 to 25.40  (HR &gt; 1)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       bmi 31.06 to 49.14  (HR &gt; 1)</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit_hr</span><span class="op">)</span></span></span>

@@ -21,8 +21,9 @@ three design features:
 `rms`, the natural home of restricted cubic splines in R, does not know
 about any of them. `survey` handles all three but has no spline helper.
 `svyrcs` is the bridge: the spline is fitted *inside* a `survey` model,
-so estimates use the weights and the confidence band uses Taylor
-linearisation on the design degrees of freedom.
+so estimates use the weights and the confidence band uses the variance
+estimator the design implies: Taylor linearisation for an ordinary
+`survey.design`, replicate-weight variance for an `svyrep.design`.
 
 ``` r
 
@@ -119,6 +120,13 @@ is the survey convention and matches
 A chi-square version is also stored in `fit$tests`, but it is
 anti-conservative with only 31 design degrees of freedom.
 
+The design degrees of freedom are a deliberate, conservative default
+rather than the only defensible choice — they behave as though every
+covariate varied only between PSUs. The `df` argument takes another
+value, including `Inf` for the normal approximation. With few PSUs the
+difference is not small, so change it deliberately and say so in the
+write-up.
+
 ## Looking at the curve
 
 ``` r
@@ -136,6 +144,14 @@ marks the reference value, where the hazard ratio is 1 by construction.
 read off the figure — where the curve turns, and over which stretches of
 BMI the confidence band actually excludes 1.
 
+Two things to keep in mind when reading those ranges. The band is
+**pointwise**: each grid point has its own 95% interval, so a stretch
+where they exclude 1 is not a simultaneous confidence region and carries
+no family-wise error control. With 200 grid points a few will cross by
+chance even when the truth is flat. And the reported turning points are
+the extremes of the evaluated grid, so they can shift a little if you
+change `n`.
+
 ``` r
 
 summary(fit)
@@ -151,9 +167,9 @@ summary(fit)
 #>   Non-linearity        F = 51.70 on 2 and 31 df,  p = 1.34e-10 
 #> 
 #>   Curve shape
-#>     Lowest    bmi = 27.28,  HR = 1.00 (0.998, 1.00)
-#>     Highest   bmi = 17.85,  HR = 2.79 (2.11, 3.69)
-#>     95% band excludes HR = 1 over:
+#>     Grid lowest   bmi = 27.28,  HR = 1.00 (0.998, 1.00)
+#>     Grid highest  bmi = 17.85,  HR = 2.79 (2.11, 3.69)
+#>     Pointwise 95% band excludes HR = 1 over:
 #>       bmi 17.85 to 25.40  (HR > 1)
 #>       bmi 31.84 to 49.14  (HR > 1)
 ```
@@ -192,9 +208,13 @@ vapply(fits, function(f) f$ref$value, numeric(1))
 - `"median"` (the default) is the **survey-weighted** population median
   — not the median of the unweighted sample, which would be a property
   of who happened to be sampled.
-- `"min"` anchors at the minimum-risk point, so the whole curve reads as
-  “excess risk relative to the healthiest value”. This is the most
-  common choice in the obesity literature.
+- `"min"` anchors at the lowest point of the fitted grid, so the whole
+  curve reads as “excess risk relative to the healthiest observed
+  value”. This is the most common choice in the obesity literature. Note
+  that this anchor is *selected from the same data*: the estimate there
+  is 1 with a standard error of zero by construction, and the
+  uncertainty in **where** the minimum sits is not propagated into the
+  band. It is a presentational choice, not an estimate of an optimum.
 - `"max"`, `"mean"`, `"quantile"` (with `ref_prob`), or any number you
   like are also accepted.
 
@@ -488,6 +508,11 @@ interval, which is not nothing.
   on your own fit.
 - Effect modification by a *continuous* variable, and three-way
   interactions, are not supported. Group modifiers are (see above).
+- Confidence bands are pointwise, not simultaneous. A simultaneous band
+  would need a max-\|t\| calibration over the grid, which this package
+  does not currently provide.
+- `ref = "min"` and `ref = "max"` do not propagate the uncertainty in
+  the selected location.
 - `ggplot2` is optional:
   [`plot()`](https://rdrr.io/r/graphics/plot.default.html) falls back to
   base graphics without it, but `autoplot()` and modifying a plot with

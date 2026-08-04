@@ -11,7 +11,7 @@ supports the reference choices commonly seen in the survey literature."></head><
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -63,10 +63,10 @@ supports the reference choices commonly seen in the survey literature.</p>
 <dd><p>The survey-weighted quantile at <code>ref_prob</code>.</p></dd>
 
 <dt><code>"min"</code></dt>
-<dd><p>The exposure value at which the fitted curve is lowest: the minimum-risk point.</p></dd>
+<dd><p>The grid point at which the fitted curve is lowest.</p></dd>
 
 <dt><code>"max"</code></dt>
-<dd><p>The exposure value at which the fitted curve is highest.</p></dd>
+<dd><p>The grid point at which the fitted curve is highest.</p></dd>
 
 
 </dl><p>Weighted quantiles and means are computed from the survey design with <code><a href="https://rdrr.io/pkg/survey/man/svyquantile.html" class="external-link">survey::svyquantile()</a></code> and
@@ -75,8 +75,25 @@ unweighted sample. <code>"min"</code> and <code>"max"</code> are found by evalua
 provisional (weighted median) reference; because the reference only shifts the curve, the located
 point does not depend on that provisional choice.</p>
     </div>
+    <div class="section level2">
+    <h2 id="selected-references-are-descriptive">Selected references are descriptive<a class="anchor" aria-label="anchor" href="#selected-references-are-descriptive"></a></h2>
 
-  </main></div>
+
+<p><code>"min"</code> and <code>"max"</code> choose an anchor <strong>from the same data that produced the curve</strong>, and that
+choice carries sampling uncertainty which the confidence band does not propagate. Two consequences
+worth stating plainly:</p><ul><li><p>At the selected point the estimate equals the null with a standard error of zero. That is an
+artefact of anchoring the contrast there, not evidence that the null holds at that exposure.</p></li>
+<li><p>The location itself is not estimated with the precision the plot suggests. In another sample the
+minimum could sit some distance away, particularly where the curve is flat near its bottom.</p></li>
+</ul><p>Treat them as a presentational choice — "excess risk relative to the healthiest observed value" —
+rather than as an estimate of an optimum. Reporting a confidence interval for the location would
+need a bootstrap or replicate-weight distribution over refits, which this package does not
+currently provide.</p>
+<p>Both are also grid searches, so the answer can shift slightly with <code>n</code>.</p>
+    </div>
+
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

@@ -5,9 +5,10 @@ survey data such as the National Health and Nutrition Examination Survey
 (NHANES). Splines are combined with survey-weighted Cox and generalised
 linear models from the 'survey' package, and exposure-response curves
 are estimated as contrasts against a reference value with design-based
-(Taylor linearisation) variance and confidence intervals on the survey
-degrees of freedom. Provides tests of overall association and of
-non-linearity, several ways of choosing the reference value, and
+variance – Taylor linearisation for ordinary designs, replicate-weight
+variance for replicate designs – and confidence intervals on the survey
+degrees of freedom by default. Provides tests of overall association and
+of non-linearity, several ways of choosing the reference value, and
 publication-ready plots.
 
 ## Getting started

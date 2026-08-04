@@ -7,8 +7,10 @@ Splines and survey designs do not normally meet. `rms` gives you
 restricted cubic splines but knows nothing about sampling weights,
 clustering or stratification; `survey` handles all three but has no
 spline helper. `svyrcs` fits the spline *inside* a `survey` model, so
-point estimates use the weights and the confidence band uses Taylor
-linearisation on the design degrees of freedom.
+point estimates use the weights and the confidence band uses whatever
+variance estimator the design implies — Taylor linearisation for an
+ordinary `survey.design`, replicate-weight variance for an
+`svyrep.design`.
 
 ## Installation
 
@@ -95,8 +97,8 @@ fixed several things that are easy to get wrong when doing this by hand:
 |----|----|----|
 | build a prediction grid with every covariate fixed at a reference value, then [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) | contrast the spline columns only | covariates cancel algebraically, so the grid is unnecessary; it also breaks when a covariate is a factor with a level missing from the grid |
 | find spline coefficients by `grep`-ing the variable name | exact match on the term label | a covariate called `bmi_group` would otherwise be swept into the estimate for `bmi` |
-| chi-square *p*-values | design-based *F* on `(df1, degf)` | with 31 design degrees of freedom the chi-square test is anti-conservative; the *F* test matches [`survey::regTermTest()`](https://rdrr.io/pkg/survey/man/regTermTest.html) |
-| normal quantile for the confidence band | *t* quantile on the design df | a normal quantile gives intervals that are too narrow |
+| chi-square *p*-values | design-based *F* on `(df1, degf)` by default | with 31 design degrees of freedom the chi-square test is anti-conservative. The design degrees of freedom are a deliberate conservative default, not the only defensible choice; `df` lets you pick another, including `Inf` |
+| normal quantile for the confidence band | *t* quantile on the design df by default | a normal quantile gives intervals that are too narrow when the design has few PSUs; `df = Inf` restores it if you want it |
 | knots and reference at unweighted quantiles | survey-weighted quantiles by default | in a design-based analysis the population median is the weighted one; `weighted_knots = FALSE` restores the old behaviour |
 | [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) plus the `datadist` global option | knots stored on the fitted model | [`predict()`](https://rdrr.io/r/stats/predict.html) on new data can never silently re-derive different knots, and there is no global state to keep in sync |
 | subgroup curves from separate stratified fits | one interaction model, curves via a selection matrix | separate fits cannot produce a *p* for interaction, and estimate the covariate effects independently; the matrix form also keeps `Cov(main, interaction)` in the standard error, which adding the two variances would drop |

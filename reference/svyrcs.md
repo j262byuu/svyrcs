@@ -18,6 +18,7 @@ svyrcs(
   n = 200,
   range = NULL,
   level = 0.95,
+  df = NULL,
   ...
 )
 ```
@@ -89,6 +90,14 @@ svyrcs(
 - level:
 
   Confidence level for the band.
+
+- df:
+
+  Denominator degrees of freedom for the confidence band and the tests.
+  `NULL` (default) uses `survey::degf(design)`; a number substitutes it;
+  `Inf` gives normal-quantile intervals and chi-square-equivalent tests.
+  Under multiple imputation this is the complete-data degrees of freedom
+  that the Barnard-Rubin correction starts from.
 
 - ...:
 
@@ -210,6 +219,21 @@ survey design entirely.
 Building the imputations is not this package's job — use `mice` or
 similar, then hand the completed datasets over.
 
+## Which degrees of freedom
+
+By default the confidence band and the tests use `survey::degf(design)`,
+the number of primary sampling units minus the number of strata. That is
+a deliberate conservative default rather than the only defensible
+answer: it behaves as though every covariate varied only between PSUs,
+which is right for design variables and cautious for individual-level
+ones.
+[`survey::regTermTest()`](https://rdrr.io/pkg/survey/man/regTermTest.html)
+exposes the same choice for the same reason.
+
+`df` overrides it. A larger value, or `Inf` for the normal
+approximation, gives narrower intervals; use it deliberately and say so
+in the write-up, because with few PSUs the difference is not small.
+
 ## Why not just use `rms`
 
 [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) gives the
@@ -217,7 +241,8 @@ same basis, but `rms` fitting functions do not know about sampling
 weights, clustering or stratification, and `survey` has no spline
 helper. `svyrcs` bridges the two: the spline is fitted inside a `survey`
 model, so point estimates use the weights and the confidence band uses
-Taylor linearisation on the design degrees of freedom.
+the variance estimator the design implies – Taylor linearisation for an
+ordinary design, replicate-weight variance for a replicate design.
 
 ## See also
 
@@ -264,14 +289,15 @@ summary(fit_hr)
 #>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)
 #>   Sample     10,617 observations, 1,893 events, 31 design df
 #>   Reference  bmi = 27.13 (minimum-risk point), HR = 1
+#>              selected from these data; its own uncertainty is not in the band
 #> 
 #>   Overall association  F = 48.07 on 3 and 31 df,  p = 9.1e-12 
 #>   Non-linearity        F = 56.15 on 2 and 31 df,  p = 4.95e-11 
 #> 
 #>   Curve shape
-#>     Lowest    bmi = 27.13,  HR = 1.00 (1.00, 1.00)
-#>     Highest   bmi = 17.85,  HR = 2.85 (2.17, 3.75)
-#>     95% band excludes HR = 1 over:
+#>     Grid lowest   bmi = 27.13,  HR = 1.00 (1.00, 1.00)
+#>     Grid highest  bmi = 17.85,  HR = 2.85 (2.17, 3.75)
+#>     Pointwise 95% band excludes HR = 1 over:
 #>       bmi 17.85 to 25.40  (HR > 1)
 #>       bmi 31.06 to 49.14  (HR > 1)
 plot(fit_hr)

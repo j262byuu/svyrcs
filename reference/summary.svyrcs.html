@@ -11,7 +11,7 @@ band excludes the null."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,7 +66,20 @@ band excludes the null.</p>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>summary.svyrcs</code>, a list with the fit metadata, the two tests and a
-<code>features</code> component holding the minimum, the maximum and the significant ranges.</p>
+<code>features</code> component holding the grid minimum, the grid maximum, and <code>significant</code>: the
+stretches over which the <strong>pointwise</strong> band excludes the null.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="these-ranges-are-pointwise">These ranges are pointwise<a class="anchor" aria-label="anchor" href="#these-ranges-are-pointwise"></a></h2>
+
+
+<p>The band is a pointwise confidence band: each grid point has its own interval at the stated level.
+A stretch where those intervals exclude the null is therefore <strong>not</strong> a simultaneous confidence
+region and carries no family-wise error control. With 200 grid points, some will cross a 95%
+pointwise band by chance even when the true curve is flat. Read the ranges as a description of
+where the curve sits relative to the null, not as a multiplicity-corrected finding.</p>
+<p>The reported lowest and highest points are likewise the extremes of the evaluated grid, so they
+can move a little if <code>n</code> changes.</p>
     </div>
 
     <div class="section level2">
@@ -90,9 +103,9 @@ band excludes the null.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Non-linearity        F = 55.21 on 2 and 31 df,  p = 6.07e-11 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Curve shape</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     Lowest    bmi = 17.93,  Difference = -20.7 (-25.0, -16.4)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     Highest   bmi = 30.11,  Difference = 0.670 (-0.587, 1.93)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     95% band excludes Difference = 0 over:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Grid lowest   bmi = 17.93,  Difference = -20.7 (-25.0, -16.4)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Grid highest  bmi = 30.11,  Difference = 0.670 (-0.587, 1.93)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Pointwise 95% band excludes Difference = 0 over:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       bmi 17.93 to 27.30  (Difference &lt; 0)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       bmi 27.46 to 28.08  (Difference &gt; 0)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       bmi 38.08 to 49.01  (Difference &lt; 0)</span>
