@@ -59,7 +59,16 @@ fmt_effect <- function(row, measure, digits = 3) {
 
 fmt_test <- function(tt, label, width = 20L) {
   if (is.na(tt$F)) {
-    return(sprintf("  %-*s not estimable (a linear term only)", width, label))
+    ## Before 0.6.3 every unavailable test printed "a linear term only", whatever the cause. A
+    ## singular or non-finite covariance says the design cannot support the model; "a linear term
+    ## only" says the formula does not contain a spline. A user acting on the wrong one of those
+    ## goes and edits something that was never the problem.
+    why <- switch(if (is.null(tt$reason) || is.na(tt$reason)) "linear" else tt$reason,
+                  linear = "a linear term only",
+                  singular = "the covariance block is singular",
+                  `non-finite` = "the covariance block is not finite",
+                  "cause unknown")
+    return(sprintf("  %-*s not estimable (%s)", width, label, why))
   }
   ## Under imputation the denominator df is not a whole number, and rounding it to one would hide
   ## the Barnard-Rubin adjustment that is the whole point.

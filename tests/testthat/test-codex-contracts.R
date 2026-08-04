@@ -131,8 +131,11 @@ test_that("the shipped documentation no longer contradicts the implementation", 
   ## reading it passed from a source checkout and failed under R CMD check. Aiming at the help also
   ## caught a second copy of the claim in ?svyrcs that grepping the README for its exact wording had
   ## missed.
-  db <- tools::Rd_db("svyrcs")
-  skip_if(length(db) == 0)
+  ## Under devtools::load_all() the installed help belongs to whatever version is in the library,
+  ## which need not match the sources just loaded. R CMD check installs first, so there the database
+  ## is the one being tested; anywhere else, skip rather than assert against the wrong package.
+  db <- tryCatch(tools::Rd_db("svyrcs"), error = function(e) NULL)
+  skip_if(is.null(db) || length(db) == 0)
   txt <- vapply(db, function(rd) paste(as.character(rd), collapse = " "), character(1L))
 
   expect_false(any(grepl("exactly `?degf\\(design\\)`? when there is nothing to impute", txt)))

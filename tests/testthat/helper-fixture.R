@@ -71,3 +71,20 @@ bare <- function(b) {
   attributes(b) <- list(dim = dim(b))
   b
 }
+
+## A replicate design whose vcov() comes back with NaN entries.
+##
+## Negative `rscales` are not a fabrication: successive-difference replication and some Fay variants
+## legitimately carry negative combining coefficients, and survey::svrepdesign() accepts them. The
+## variance routine takes sqrt(rscales), so the covariance picks up NaN while the coefficients stay
+## finite -- which is exactly the shape that used to slip past the finiteness checks.
+nan_vcov_design <- function(frac = 0.4, seed = 4) {
+  jk <- survey::as.svrepdesign(nhanes_design(), type = "JKn")
+  rs <- jk$rscales
+  set.seed(seed)
+  rs[sample(seq_along(rs), floor(frac * length(rs)))] <-
+    -rs[sample(seq_along(rs), floor(frac * length(rs)))]
+  survey::svrepdesign(data = jk$variables, repweights = as.matrix(jk$repweights),
+                      weights = stats::weights(jk, "sampling"), type = "other",
+                      scale = jk$scale, rscales = rs, mse = TRUE, combined.weights = FALSE)
+}
