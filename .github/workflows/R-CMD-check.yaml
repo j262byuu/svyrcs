@@ -53,6 +53,13 @@ jobs:
         if: matrix.config.manual
         run: tlmgr install makeindex inconsolata times helvetic dejavu
 
+      # Dropping --no-manual re-enables the HTML manual check as well as the PDF one, and that step
+      # NOTEs without HTML Tidy. CRAN's machines have it, so install it rather than tolerate the
+      # NOTE -- the point of this job is to check what CRAN checks.
+      - name: Install HTML Tidy for the HTML manual check
+        if: matrix.config.manual
+        run: sudo apt-get update && sudo apt-get install -y tidy
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
@@ -70,12 +77,16 @@ jobs:
           log <- list.files(".", "^00check[.]log$", recursive = TRUE, full.names = TRUE)
           if (length(log) != 1) stop("expected exactly one 00check.log, found ", length(log))
           txt <- readLines(log, warn = FALSE)
-          hit <- grep("checking PDF version of manual", txt, value = TRUE)
-          if (!length(hit)) {
-            stop("the check log has no 'PDF version of manual' line, so the manual was skipped")
+          for (what in c("PDF", "HTML")) {
+            hit <- grep(paste("checking", what, "version of manual"), txt, value = TRUE)
+            if (!length(hit)) {
+              stop("the check log has no '", what, " version of manual' line, so it was skipped")
+            }
+            if (!any(grepl("OK", hit))) {
+              stop("the ", what, " manual step did not pass: ", paste(hit, collapse = "; "))
+            }
+            cat(hit, sep = "\n")
           }
-          if (!any(grepl("OK", hit))) stop("the manual step did not pass: ", paste(hit, collapse = "; "))
-          cat(hit, sep = "\n")
         shell: Rscript {0}
 
   # ggplot2 is a Suggests, and plot() is meant to fall back to base graphics without it. The matrix
