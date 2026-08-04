@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,20 @@
       <small>Source: <a href="https://github.com/j262byuu/svyrcs/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.5.0" id="svyrcs-050">svyrcs 0.5.0<a class="anchor" aria-label="anchor" href="#svyrcs-050"></a></h2>
+<div class="section level3">
+<h3 id="results-change-when-data-are-missing-0-5-0">Results change when data are missing<a class="anchor" aria-label="anchor" href="#results-change-when-data-are-missing-0-5-0"></a></h3>
+<p><strong>Knots, the reference value and the plotting range are now derived from the analytic sample</strong> — the rows the model is actually fitted on — rather than from the design as supplied. Previously the spline was parameterised on one population and estimated on another whenever any model variable had missing values.</p>
+<p>The effect is not cosmetic. On the shipped data with missingness related to the exposure (10,617 rows to 7,748), the outer knot was 40.67 where the analytic sample gives 31.53, nine BMI units out, and the weighted median reference was 27.35 against 25.80. The extrapolation warning added in 0.4.1 was calibrated against the full design too, so it was checking against a range the fit never saw.</p>
+<p>Anyone comparing output across versions on a dataset with missing values should expect the numbers to move. Point estimates and standard errors for a <em>given</em> set of knots are unchanged: fitting on the analytic design rather than letting the model drop rows leaves them identical to 1e-15, because survey’s subsetting is proper domain estimation. What moves is the knot placement and the anchor. Degrees of freedom fall only when a whole primary sampling unit contributes no complete case, which is the honest answer in that situation.</p>
+<ul><li>The complete-case mask covers <strong>every</strong> variable in the formula, not just the exposure.</li>
+<li>Under multiple imputation all imputations share one inclusion mask, the intersection of their complete cases, so that knots and coefficients mean the same thing in each. The number of rows this costs is reported by <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>.</li>
+<li>
+<code>svyrcs::rcs(x, 4)</code> and <code>svyrcs:::rcs(x, 4)</code> are recognised. Previously they raised “formula must contain an rcs() term”, which was untrue.</li>
+<li>A transformed exposure such as <code>rcs(log(bmi), 4)</code> is refused up front, with the workaround — <code>update(design, log_bmi = log(bmi))</code> — in the message.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.1" id="svyrcs-041">svyrcs 0.4.1<a class="anchor" aria-label="anchor" href="#svyrcs-041"></a></h2>
 <p>Findings from an adversarial verification sweep. None of them produced a wrong number, but several let a doubtful situation pass without saying so.</p>

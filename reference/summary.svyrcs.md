@@ -42,19 +42,19 @@ summary(fit)
 #> 
 #>   Model      survey-weighted GLM (gaussian, identity link)
 #>   Outcome    tchol
-#>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)
+#>   Exposure   bmi, 4 knots at 19.85, 25.27, 29.71, 40.65 (weighted quantiles)
 #>   Sample     9,968 observations, 31 design df
-#>   Reference  bmi = 27.35 (weighted median), Difference = 0
+#>   Reference  bmi = 27.37 (weighted median), Difference = 0
 #>   Dropped    649 rows with missing values
 #> 
-#>   Overall association  F = 39.87 on 3 and 31 df,  p = 9.34e-11 
+#>   Overall association  F = 39.86 on 3 and 31 df,  p = 9.36e-11 
 #>   Non-linearity        F = 55.21 on 2 and 31 df,  p = 6.07e-11 
 #> 
 #>   Curve shape
-#>     Lowest    bmi = 17.85,  Difference = -20.9 (-25.2, -16.5)
-#>     Highest   bmi = 30.11,  Difference = 0.694 (-0.568, 1.96)
+#>     Lowest    bmi = 17.93,  Difference = -20.7 (-25.0, -16.4)
+#>     Highest   bmi = 30.11,  Difference = 0.670 (-0.587, 1.93)
 #>     95% band excludes Difference = 0 over:
-#>       bmi 17.85 to 27.28  (Difference < 0)
-#>       bmi 27.44 to 28.07  (Difference > 0)
-#>       bmi 38.13 to 49.14  (Difference < 0)
+#>       bmi 17.93 to 27.30  (Difference < 0)
+#>       bmi 27.46 to 28.08  (Difference > 0)
+#>       bmi 38.08 to 49.01  (Difference < 0)
 ```

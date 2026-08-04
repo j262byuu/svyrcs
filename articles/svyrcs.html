@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -263,13 +263,13 @@ workflow changes.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;   Model      survey-weighted GLM (quasibinomial, logit link)</span></span>
 <span><span class="co">#&gt;   Outcome    high_chol</span></span>
-<span><span class="co">#&gt;   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)</span></span>
+<span><span class="co">#&gt;   Exposure   bmi, 4 knots at 19.85, 25.27, 29.71, 40.65 (weighted quantiles)</span></span>
 <span><span class="co">#&gt;   Sample     9,968 observations, 31 design df</span></span>
-<span><span class="co">#&gt;   Reference  bmi = 27.35 (weighted median), OR = 1</span></span>
+<span><span class="co">#&gt;   Reference  bmi = 27.37 (weighted median), OR = 1</span></span>
 <span><span class="co">#&gt;   Dropped    649 rows with missing values</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Overall association  F = 19.58 on 3 and 31 df,  p = 2.61e-07 </span></span>
-<span><span class="co">#&gt;   Non-linearity        F = 28.03 on 2 and 31 df,  p = 1.12e-07</span></span>
+<span><span class="co">#&gt;   Overall association  F = 19.60 on 3 and 31 df,  p = 2.59e-07 </span></span>
+<span><span class="co">#&gt;   Non-linearity        F = 28.06 on 2 and 31 df,  p = 1.11e-07</span></span>
 <span></span>
 <span><span class="co"># continuous outcome: mean difference</span></span>
 <span><span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="va">tchol</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span>
@@ -277,12 +277,12 @@ workflow changes.</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;   Model      survey-weighted GLM (gaussian, identity link)</span></span>
 <span><span class="co">#&gt;   Outcome    tchol</span></span>
-<span><span class="co">#&gt;   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)</span></span>
+<span><span class="co">#&gt;   Exposure   bmi, 4 knots at 19.85, 25.27, 29.71, 40.65 (weighted quantiles)</span></span>
 <span><span class="co">#&gt;   Sample     9,968 observations, 31 design df</span></span>
-<span><span class="co">#&gt;   Reference  bmi = 27.35 (weighted median), Difference = 0</span></span>
+<span><span class="co">#&gt;   Reference  bmi = 27.37 (weighted median), Difference = 0</span></span>
 <span><span class="co">#&gt;   Dropped    649 rows with missing values</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Overall association  F = 39.87 on 3 and 31 df,  p = 9.34e-11 </span></span>
+<span><span class="co">#&gt;   Overall association  F = 39.86 on 3 and 31 df,  p = 9.36e-11 </span></span>
 <span><span class="co">#&gt;   Non-linearity        F = 55.21 on 2 and 31 df,  p = 6.07e-11</span></span></code></pre></div>
 <p>Use <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">quasipoisson()</a></code> for rates, which gives rate ratios.
 The quasi- families are the right choice under a survey design: the

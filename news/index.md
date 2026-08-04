@@ -1,5 +1,44 @@
 # Changelog
 
+## svyrcs 0.5.0
+
+### Results change when data are missing
+
+**Knots, the reference value and the plotting range are now derived from
+the analytic sample** — the rows the model is actually fitted on —
+rather than from the design as supplied. Previously the spline was
+parameterised on one population and estimated on another whenever any
+model variable had missing values.
+
+The effect is not cosmetic. On the shipped data with missingness related
+to the exposure (10,617 rows to 7,748), the outer knot was 40.67 where
+the analytic sample gives 31.53, nine BMI units out, and the weighted
+median reference was 27.35 against 25.80. The extrapolation warning
+added in 0.4.1 was calibrated against the full design too, so it was
+checking against a range the fit never saw.
+
+Anyone comparing output across versions on a dataset with missing values
+should expect the numbers to move. Point estimates and standard errors
+for a *given* set of knots are unchanged: fitting on the analytic design
+rather than letting the model drop rows leaves them identical to 1e-15,
+because survey’s subsetting is proper domain estimation. What moves is
+the knot placement and the anchor. Degrees of freedom fall only when a
+whole primary sampling unit contributes no complete case, which is the
+honest answer in that situation.
+
+- The complete-case mask covers **every** variable in the formula, not
+  just the exposure.
+- Under multiple imputation all imputations share one inclusion mask,
+  the intersection of their complete cases, so that knots and
+  coefficients mean the same thing in each. The number of rows this
+  costs is reported by [`print()`](https://rdrr.io/r/base/print.html).
+- `svyrcs::rcs(x, 4)` and `svyrcs:::rcs(x, 4)` are recognised.
+  Previously they raised “formula must contain an rcs() term”, which was
+  untrue.
+- A transformed exposure such as `rcs(log(bmi), 4)` is refused up front,
+  with the workaround — `update(design, log_bmi = log(bmi))` — in the
+  message.
+
 ## svyrcs 0.4.1
 
 Findings from an adversarial verification sweep. None of them produced a

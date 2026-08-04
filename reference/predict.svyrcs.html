@@ -11,7 +11,7 @@ of 30 against a BMI of 25."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -98,17 +98,17 @@ when the fit has an effect modifier.</p>
 <span class="r-in"><span><span class="co"># against the fitted reference</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">25</span>, <span class="fl">30</span>, <span class="fl">35</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    x    estimate    conf.low  conf.high        se</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 20 -14.6941295 -17.5737038 -11.814555 1.4118928</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 25  -2.5053629  -3.3460312  -1.664695 0.4121906</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 30   0.6924554  -0.5263881   1.911299 0.5976148</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 35  -0.5684705  -2.7505635   1.613622 1.0699086</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 20 -14.7250883 -17.6102495 -11.839927 1.4146321</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 25  -2.5271192  -3.3727270  -1.681511 0.4146125</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 30   0.6693980  -0.5452256   1.884022 0.5955458</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4 35  -0.6040603  -2.7862079   1.578087 1.0699354</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># against a BMI of 25 instead</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">fit</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">30</span>, <span class="fl">35</span><span class="op">)</span>, ref <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    x   estimate    conf.low conf.high        se</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 20 -12.188767 -14.9197540 -9.457779 1.3390387</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 30   3.197818   1.1960692  5.199567 0.9814837</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 35   1.936892  -0.9476258  4.821411 1.4143168</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 20 -12.197969 -14.9313651 -9.464573 1.3402196</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2 30   3.196517   1.1953994  5.197635 0.9811741</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3 35   1.923059  -0.9642341  4.810352 1.4156774</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

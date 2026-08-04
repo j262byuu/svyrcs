@@ -219,13 +219,13 @@ svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
 #> 
 #>   Model      survey-weighted GLM (quasibinomial, logit link)
 #>   Outcome    high_chol
-#>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)
+#>   Exposure   bmi, 4 knots at 19.85, 25.27, 29.71, 40.65 (weighted quantiles)
 #>   Sample     9,968 observations, 31 design df
-#>   Reference  bmi = 27.35 (weighted median), OR = 1
+#>   Reference  bmi = 27.37 (weighted median), OR = 1
 #>   Dropped    649 rows with missing values
 #> 
-#>   Overall association  F = 19.58 on 3 and 31 df,  p = 2.61e-07 
-#>   Non-linearity        F = 28.03 on 2 and 31 df,  p = 1.12e-07
+#>   Overall association  F = 19.60 on 3 and 31 df,  p = 2.59e-07 
+#>   Non-linearity        F = 28.06 on 2 and 31 df,  p = 1.11e-07
 
 # continuous outcome: mean difference
 svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
@@ -233,12 +233,12 @@ svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
 #> 
 #>   Model      survey-weighted GLM (gaussian, identity link)
 #>   Outcome    tchol
-#>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)
+#>   Exposure   bmi, 4 knots at 19.85, 25.27, 29.71, 40.65 (weighted quantiles)
 #>   Sample     9,968 observations, 31 design df
-#>   Reference  bmi = 27.35 (weighted median), Difference = 0
+#>   Reference  bmi = 27.37 (weighted median), Difference = 0
 #>   Dropped    649 rows with missing values
 #> 
-#>   Overall association  F = 39.87 on 3 and 31 df,  p = 9.34e-11 
+#>   Overall association  F = 39.86 on 3 and 31 df,  p = 9.36e-11 
 #>   Non-linearity        F = 55.21 on 2 and 31 df,  p = 6.07e-11
 ```
 

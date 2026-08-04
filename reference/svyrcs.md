@@ -243,12 +243,12 @@ fit
 #> 
 #>   Model      survey-weighted GLM (gaussian, identity link)
 #>   Outcome    tchol
-#>   Exposure   bmi, 4 knots at 19.78, 25.22, 29.71, 40.67 (weighted quantiles)
+#>   Exposure   bmi, 4 knots at 19.85, 25.27, 29.71, 40.65 (weighted quantiles)
 #>   Sample     9,968 observations, 31 design df
-#>   Reference  bmi = 27.35 (weighted median), Difference = 0
+#>   Reference  bmi = 27.37 (weighted median), Difference = 0
 #>   Dropped    649 rows with missing values
 #> 
-#>   Overall association  F = 39.87 on 3 and 31 df,  p = 9.34e-11 
+#>   Overall association  F = 39.86 on 3 and 31 df,  p = 9.36e-11 
 #>   Non-linearity        F = 55.21 on 2 and 31 df,  p = 6.07e-11 
 
 # survival outcome: all-cause mortality, anchored at the minimum-risk BMI
