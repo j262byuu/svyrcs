@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,17 @@
       <small>Source: <a href="https://github.com/j262byuu/svyrcs/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.6.1" id="svyrcs-061">svyrcs 0.6.1<a class="anchor" aria-label="anchor" href="#svyrcs-061"></a></h2>
+<p>Three defects found by an independent review, each of which substituted a different quantity for the one asked for, with nothing in the output to show it. <strong>Results change</strong> for the affected cases.</p>
+<ul><li>
+<p><strong>A transformation inside the formula no longer breaks the analytic sample.</strong> The complete-case mask was computed on the raw design columns, so a value that only became non-finite once the formula was evaluated — <code>log(z)</code> for <code>z &lt;= 0</code>, <code>1/z</code> for <code>z == 0</code> — passed the mask, was then dropped by the fitting function, and knots, reference and range were derived from rows the model never used. In testing this moved an outer knot by 14.6 units. The mask now comes from an evaluated model frame, and non-finite values count as unusable, not just <code>NA</code>.</p>
+<p>This is the same class of defect as the missing-data one fixed in 0.5.0. The rule now is that the analytic sample is <em>taken from</em> an evaluated model frame rather than reconstructed alongside one.</p>
+</li>
+<li><p><strong><code>subset</code> is refused</strong> rather than accepted through <code>...</code> and applied after the knots were already chosen. Subset the design instead: <code>svyrcs(f, design = subset(design, cond))</code>.</p></li>
+<li><p><strong><code><a href="../reference/rcs.html">svyrcs::rcs()</a></code> now freezes its knots for direct model prediction.</strong> <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> matched the bare name only, so <code>lm(y ~ svyrcs::rcs(x, 4))</code> re-derived knots from <code>newdata</code>: a model trained on an exposure of 1–100 evaluated a prediction grid near 1000 using knots near 1000. This was a regression from 0.5.0, which taught <code><a href="../reference/svyrcs.html">svyrcs()</a></code> to recognise the namespaced form but left the <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> method behind. <code><a href="../reference/svyrcs.html">svyrcs()</a></code> itself was never affected, since it inlines knots before fitting — which is precisely why 786 tests missed it.</p></li>
+<li><p><strong>A named reference on a multiply imputed fit is resolved the way it was at fitting time.</strong> <code>fit_design()</code> returned <code>NULL</code> for a pooled fit, so <code>predict(fit, ref = "median")</code> fell back to an unweighted quantile of the first imputation. Evaluated at the reference the fit was anchored to, it returned -0.0881 instead of 0. The component designs are now reachable, read back from the fits rather than stored again, so the pooled object is the same size as before.</p></li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="svyrcs-060">svyrcs 0.6.0<a class="anchor" aria-label="anchor" href="#svyrcs-060"></a></h2>
 <div class="section level3">

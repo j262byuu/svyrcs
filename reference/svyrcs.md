@@ -104,6 +104,9 @@ svyrcs(
   Passed on to
   [`survey::svycoxph()`](https://rdrr.io/pkg/survey/man/svycoxph.html)
   or [`survey::svyglm()`](https://rdrr.io/pkg/survey/man/svyglm.html).
+  `subset` is refused: it would be applied after the knots and the
+  reference had already been derived, so subset the design instead, with
+  `subset(design, ...)`.
 
 ## Value
 
