@@ -380,8 +380,8 @@ fit_mi
 #>   Imputed    m = 5, fraction of missing information 7.4e-05 to 0.00097 (median 0.00045)
 #>              degrees of freedom reduced from 31 by Barnard-Rubin
 #> 
-#>   Overall association  F = 45.93 on 3 and 29.2 df,  p = 3.61e-11 
-#>   Non-linearity        F = 53.27 on 2 and 29.2 df,  p = 1.83e-10
+#>   Overall association  F = 45.95 on 3 and 29.2 df,  p = 3.57e-11 
+#>   Non-linearity        F = 53.27 on 2 and 29.2 df,  p = 1.82e-10
 ```
 
 Two things are worth understanding here.
@@ -417,10 +417,33 @@ missing information (`fmi`) is highest. When nothing in the model is
 imputed, `fmi` is zero, `df` is exactly 31, and the result is identical
 to the complete-data fit.
 
-The joint tests are treated the same way. Their denominator degrees of
-freedom are adjusted rather than taken from the usual
-multiple-imputation rule, which is derived from the imputation structure
-alone and ignores the survey design.
+The joint tests — overall, non-linearity, interaction, and each
+per-group test — use **D1** (Li, Raghunathan and Rubin 1991), with the
+small-sample denominator degrees of freedom of **Reiter (2007)**.
+Reiter’s correction is the one built for a finite complete-data degrees
+of freedom, which is exactly what a survey design supplies. The
+implementation is checked against `mitml`, the reference implementation,
+to machine precision.
+
+Earlier versions used a construction of my own here, and it is worth
+saying why that was a problem even though it looked reasonable: a reader
+could not tell what had been computed. A named rule can be looked up,
+cited and argued with; an ad hoc one can only be trusted or not.
+
+One practical limit: Reiter’s expansion divides by $`k(m-1)-4`$, so it
+is undefined when the block size times $`m-1`$ is 4 or less — four knots
+and three imputations, for instance. The package warns and falls back to
+the complete-data degrees of freedom there. More imputations is the fix.
+
+A second, more important limit: **the imputation joint test is
+conservative.** A null simulation found it rejecting at 0.7–3.2% against
+a nominal 5%, where the same test on complete data rejected at 5.8–9.0%;
+pointwise coverage ran 96.6–98.8% against a nominal 95%. It is worst
+with few primary sampling units. So a non-significant *p* under
+imputation is weak evidence of no effect — lean on the estimates and
+their intervals. The rule this replaced was equally conservative or more
+so, so this is the price of the small-sample correction, not of the
+change.
 
 ## Knots
 
@@ -508,6 +531,8 @@ interval, which is not nothing.
   on your own fit.
 - Effect modification by a *continuous* variable, and three-way
   interactions, are not supported. Group modifiers are (see above).
+- The multiple-imputation joint tests are conservative, especially with
+  few PSUs; see the imputation section.
 - Confidence bands are pointwise, not simultaneous. A simultaneous band
   would need a max-\|t\| calibration over the grid, which this package
   does not currently provide.

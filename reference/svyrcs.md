@@ -203,6 +203,19 @@ The curve then carries two extra columns, `df` and `fmi`: the degrees of
 freedom used at that point and the fraction of missing information
 there.
 
+**The joint tests.** The overall, non-linearity, interaction and
+per-group tests use **D1** (Li, Raghunathan and Rubin 1991): the
+statistic is \\\bar{Q}' \[(1 + r)\bar{U}\]^{-1} \bar{Q} / k\\ with \\r =
+(1 + 1/m)\\\mathrm{tr}(B\bar{U}^{-1})/k\\, referred to an *F*
+distribution whose denominator degrees of freedom come from Reiter
+(2007). Reiter's correction is the one that accounts for a finite
+complete-data degrees of freedom, which is exactly the survey situation.
+
+Where \\k(m-1) \le 4\\ that correction is undefined – it contains
+\\1/(k(m-1)-4)\\ – and the package warns and falls back to the
+complete-data degrees of freedom. Raising the number of imputations is
+the fix.
+
 **On the degrees of freedom.**
 [`mitools::MIcombine()`](https://rdrr.io/pkg/mitools/man/MIcombine.html)
 reports \\(m - 1)(1 + 1/r)^2\\, which is unbounded above — against the

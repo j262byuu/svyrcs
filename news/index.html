@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,32 @@
       <small>Source: <a href="https://github.com/j262byuu/svyrcs/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.6.0" id="svyrcs-060">svyrcs 0.6.0<a class="anchor" aria-label="anchor" href="#svyrcs-060"></a></h2>
+<div class="section level3">
+<h3 id="multiple-imputation-joint-tests-now-use-a-named-rule-0-6-0">Multiple-imputation joint tests now use a named rule<a class="anchor" aria-label="anchor" href="#multiple-imputation-joint-tests-now-use-a-named-rule-0-6-0"></a></h3>
+<p><strong>Joint-test <em>p</em>-values under imputation change.</strong> They previously came from a construction of my own: a Wald statistic on the pooled total covariance, with a denominator degrees of freedom obtained by collapsing the block’s relative increase in variance to a scalar and reusing the scalar Barnard-Rubin formula. That is not D1, D2 or D3, and a reader could not tell what had been computed.</p>
+<p>The overall, non-linearity, interaction and per-group tests now use <strong>D1</strong> (Li, Raghunathan and Rubin 1991) with the small-sample denominator degrees of freedom of <strong>Reiter (2007)</strong>, which is the correction designed for a finite complete-data degrees of freedom — the survey situation. The implementation agrees with <code>mitml:::.D1</code> to machine precision, which the test suite checks.</p>
+<p>Two differences from the old rule, both of which move results:</p>
+<ul><li>the statistic uses  rather than the pooled total covariance;</li>
+<li>the denominator degrees of freedom come from Reiter’s expansion.</li>
+</ul><p>Where  Reiter’s expansion is undefined — it divides by , and <code>mitml</code> returns a degenerate value there. <code>svyrcs</code> warns and falls back to the complete-data degrees of freedom; raising the number of imputations is the fix.</p>
+</div>
+<div class="section level3">
+<h3 id="two-related-corrections-0-6-0">Two related corrections<a class="anchor" aria-label="anchor" href="#two-related-corrections-0-6-0"></a></h3>
+<ul><li>
+<strong><code>df</code> now reaches the imputation arithmetic.</strong> In 0.5.1 it affected only the single-design path, so <code>df = Inf</code> silently did nothing to a multiply imputed fit.</li>
+<li>
+<strong><code>barnard_rubin_df()</code> follows the published formula at zero between-imputation variance</strong>, where it returns  rather than . Earlier versions short-circuited to  so that a fit with nothing to impute reproduced the complete-data fit exactly. That was a departure from the rule dressed up as an improvement. The consequence: with nothing to impute, estimates, standard errors and the <em>F</em> statistic are still identical to the complete-data fit, but intervals are about 1% wider. The scalar formula now matches <code>mice:::barnard.rubin</code> for every combination tested.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="what-the-simulation-showed-0-6-0">What the simulation showed<a class="anchor" aria-label="anchor" href="#what-the-simulation-showed-0-6-0"></a></h3>
+<p>A null simulation, kept with the development notes, found the imputation joint test <strong>conservative</strong>: 0.7% to 3.2% rejection at a nominal 5%, against 5.8% to 9.0% for the same test on complete data, with pointwise coverage of 96.6% to 98.8% against 95%. It is worst with few primary sampling units. This is now documented in <code><a href="../reference/svyrcs.html">?svyrcs</a></code> and the vignette, because a non-significant imputation <em>p</em>-value is weaker evidence than it looks.</p>
+<p>This is not a reason to revert: the previous rule was equally conservative or more so on the same data, and had no name to look up. The change buys a citable rule at no measured cost in size.</p>
+<p>The first version of that simulation was itself wrong, and the way it failed is worth recording. It reported every rule as conservative — including a naive chi-square, which cannot be. The exposure had been made missing at random and imputed from the outcome, but under the null those are independent, so the imputation model had no signal and the between-imputation variance swamped everything. Running the same generator with the missingness switched off showed the harness was fine and localised the fault.</p>
+<p>The per-point curve degrees of freedom are unchanged in method — scalar Barnard-Rubin remains the right rule for a scalar estimand.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.1" id="svyrcs-051">svyrcs 0.5.1<a class="anchor" aria-label="anchor" href="#svyrcs-051"></a></h2>
 <p>Labelling and documentation, from the same review as 0.5.0. <strong>No estimate, interval or p-value changes</strong>, with one exception noted below; the compat suite passes unmodified.</p>

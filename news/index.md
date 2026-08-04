@@ -1,5 +1,75 @@
 # Changelog
 
+## svyrcs 0.6.0
+
+### Multiple-imputation joint tests now use a named rule
+
+**Joint-test *p*-values under imputation change.** They previously came
+from a construction of my own: a Wald statistic on the pooled total
+covariance, with a denominator degrees of freedom obtained by collapsing
+the block’s relative increase in variance to a scalar and reusing the
+scalar Barnard-Rubin formula. That is not D1, D2 or D3, and a reader
+could not tell what had been computed.
+
+The overall, non-linearity, interaction and per-group tests now use
+**D1** (Li, Raghunathan and Rubin 1991) with the small-sample
+denominator degrees of freedom of **Reiter (2007)**, which is the
+correction designed for a finite complete-data degrees of freedom — the
+survey situation. The implementation agrees with `mitml:::.D1` to
+machine precision, which the test suite checks.
+
+Two differences from the old rule, both of which move results:
+
+- the statistic uses rather than the pooled total covariance;
+- the denominator degrees of freedom come from Reiter’s expansion.
+
+Where Reiter’s expansion is undefined — it divides by , and `mitml`
+returns a degenerate value there. `svyrcs` warns and falls back to the
+complete-data degrees of freedom; raising the number of imputations is
+the fix.
+
+### Two related corrections
+
+- **`df` now reaches the imputation arithmetic.** In 0.5.1 it affected
+  only the single-design path, so `df = Inf` silently did nothing to a
+  multiply imputed fit.
+- **`barnard_rubin_df()` follows the published formula at zero
+  between-imputation variance**, where it returns rather than . Earlier
+  versions short-circuited to so that a fit with nothing to impute
+  reproduced the complete-data fit exactly. That was a departure from
+  the rule dressed up as an improvement. The consequence: with nothing
+  to impute, estimates, standard errors and the *F* statistic are still
+  identical to the complete-data fit, but intervals are about 1% wider.
+  The scalar formula now matches `mice:::barnard.rubin` for every
+  combination tested.
+
+### What the simulation showed
+
+A null simulation, kept with the development notes, found the imputation
+joint test **conservative**: 0.7% to 3.2% rejection at a nominal 5%,
+against 5.8% to 9.0% for the same test on complete data, with pointwise
+coverage of 96.6% to 98.8% against 95%. It is worst with few primary
+sampling units. This is now documented in
+[`?svyrcs`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md) and
+the vignette, because a non-significant imputation *p*-value is weaker
+evidence than it looks.
+
+This is not a reason to revert: the previous rule was equally
+conservative or more so on the same data, and had no name to look up.
+The change buys a citable rule at no measured cost in size.
+
+The first version of that simulation was itself wrong, and the way it
+failed is worth recording. It reported every rule as conservative —
+including a naive chi-square, which cannot be. The exposure had been
+made missing at random and imputed from the outcome, but under the null
+those are independent, so the imputation model had no signal and the
+between-imputation variance swamped everything. Running the same
+generator with the missingness switched off showed the harness was fine
+and localised the fault.
+
+The per-point curve degrees of freedom are unchanged in method — scalar
+Barnard-Rubin remains the right rule for a scalar estimand.
+
 ## svyrcs 0.5.1
 
 Labelling and documentation, from the same review as 0.5.0. **No

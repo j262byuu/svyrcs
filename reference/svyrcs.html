@@ -11,7 +11,7 @@ and the reference value the curve is anchored to."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -206,6 +206,15 @@ imputation chose its own knots, the coefficient vectors would not be estimates o
 parameters and Rubin's rules would not apply.</p>
 <p>The curve then carries two extra columns, <code>df</code> and <code>fmi</code>: the degrees of freedom used at that
 point and the fraction of missing information there.</p>
+<p><strong>The joint tests.</strong> The overall, non-linearity, interaction and per-group tests use
+<strong>D1</strong> (Li, Raghunathan and Rubin 1991): the statistic is
+\(\bar{Q}' [(1 + r)\bar{U}]^{-1} \bar{Q} / k\) with
+\(r = (1 + 1/m)\,\mathrm{tr}(B\bar{U}^{-1})/k\), referred to an <em>F</em> distribution whose
+denominator degrees of freedom come from Reiter (2007). Reiter's correction is the one that
+accounts for a finite complete-data degrees of freedom, which is exactly the survey situation.</p>
+<p>Where \(k(m-1) \le 4\) that correction is undefined – it contains \(1/(k(m-1)-4)\) – and
+the package warns and falls back to the complete-data degrees of freedom. Raising the number of
+imputations is the fix.</p>
 <p><strong>On the degrees of freedom.</strong> <code><a href="https://rdrr.io/pkg/mitools/man/MIcombine.html" class="external-link">mitools::MIcombine()</a></code> reports
 \((m - 1)(1 + 1/r)^2\), which is unbounded above — against the design shipped with this package,
 which has 31 degrees of freedom, it returns values in the thousands or <code>Inf</code>. Using that for a

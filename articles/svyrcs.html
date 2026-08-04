@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -412,8 +412,8 @@ design.</p>
 <span><span class="co">#&gt;   Imputed    m = 5, fraction of missing information 7.4e-05 to 0.00097 (median 0.00045)</span></span>
 <span><span class="co">#&gt;              degrees of freedom reduced from 31 by Barnard-Rubin</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;   Overall association  F = 45.93 on 3 and 29.2 df,  p = 3.61e-11 </span></span>
-<span><span class="co">#&gt;   Non-linearity        F = 53.27 on 2 and 29.2 df,  p = 1.83e-10</span></span></code></pre></div>
+<span><span class="co">#&gt;   Overall association  F = 45.95 on 3 and 29.2 df,  p = 3.57e-11 </span></span>
+<span><span class="co">#&gt;   Non-linearity        F = 53.27 on 2 and 29.2 df,  p = 1.82e-10</span></span></code></pre></div>
 <p>Two things are worth understanding here.</p>
 <p><strong>Knots and the reference are fixed before any model is
 fitted</strong>, as the average of the survey-weighted quantiles across
@@ -442,10 +442,34 @@ fraction of missing information (<code>fmi</code>) is highest. When
 nothing in the model is imputed, <code>fmi</code> is zero,
 <code>df</code> is exactly 31, and the result is identical to the
 complete-data fit.</p>
-<p>The joint tests are treated the same way. Their denominator degrees
-of freedom are adjusted rather than taken from the usual
-multiple-imputation rule, which is derived from the imputation structure
-alone and ignores the survey design.</p>
+<p>The joint tests — overall, non-linearity, interaction, and each
+per-group test — use <strong>D1</strong> (Li, Raghunathan and Rubin
+1991), with the small-sample denominator degrees of freedom of
+<strong>Reiter (2007)</strong>. Reiter’s correction is the one built for
+a finite complete-data degrees of freedom, which is exactly what a
+survey design supplies. The implementation is checked against
+<code>mitml</code>, the reference implementation, to machine
+precision.</p>
+<p>Earlier versions used a construction of my own here, and it is worth
+saying why that was a problem even though it looked reasonable: a reader
+could not tell what had been computed. A named rule can be looked up,
+cited and argued with; an ad hoc one can only be trusted or not.</p>
+<p>One practical limit: Reiter’s expansion divides by
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo stretchy="false" form="prefix">(</mo><mi>m</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">k(m-1)-4</annotation></semantics></math>,
+so it is undefined when the block size times
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">m-1</annotation></semantics></math>
+is 4 or less — four knots and three imputations, for instance. The
+package warns and falls back to the complete-data degrees of freedom
+there. More imputations is the fix.</p>
+<p>A second, more important limit: <strong>the imputation joint test is
+conservative.</strong> A null simulation found it rejecting at 0.7–3.2%
+against a nominal 5%, where the same test on complete data rejected at
+5.8–9.0%; pointwise coverage ran 96.6–98.8% against a nominal 95%. It is
+worst with few primary sampling units. So a non-significant <em>p</em>
+under imputation is weak evidence of no effect — lean on the estimates
+and their intervals. The rule this replaced was equally conservative or
+more so, so this is the price of the small-sample correction, not of the
+change.</p>
 </div>
 <div class="section level2">
 <h2 id="knots">Knots<a class="anchor" aria-label="anchor" href="#knots"></a>
@@ -524,6 +548,8 @@ estimated from the design anyway.</li>
 <code><a href="../reference/svyrcs_curve.html">svyrcs_curve()</a></code> on your own fit.</li>
 <li>Effect modification by a <em>continuous</em> variable, and three-way
 interactions, are not supported. Group modifiers are (see above).</li>
+<li>The multiple-imputation joint tests are conservative, especially
+with few PSUs; see the imputation section.</li>
 <li>Confidence bands are pointwise, not simultaneous. A simultaneous
 band would need a max-|t| calibration over the grid, which this package
 does not currently provide.</li>
