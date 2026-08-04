@@ -33,6 +33,27 @@ warn_if_rank_deficient <- function(V, var) {
   invisible(TRUE)
 }
 
+## Resolve the denominator degrees of freedom.
+##
+## The design df is a default, not a law. It is the conservative choice -- it behaves as though every
+## covariate varied only between PSUs -- and with few PSUs it matters a great deal. A user analysing
+## individual-level covariates, or content with the asymptotic approximation, may reasonably want a
+## larger value or Inf. survey::regTermTest() exposes the same choice.
+resolve_df <- function(df, degf) {
+  if (is.null(df)) {
+    if (is.null(degf) || is.na(degf) || (is.finite(degf) && degf <= 0)) {
+      stop_svyrcs("could not determine the survey degrees of freedom; pass `df` explicitly, or ",
+                  "`df = Inf` for normal-quantile intervals")
+    }
+    return(degf)
+  }
+  if (!is.numeric(df) || length(df) != 1L || is.na(df) || df <= 0) {
+    stop_svyrcs("`df` must be a single positive number, or Inf for normal-quantile intervals; got ",
+                format(df))
+  }
+  df
+}
+
 ## Is x a whole number, allowing for the usual floating point slop?
 is_count <- function(x, tol = .Machine$double.eps^0.5) {
   is.numeric(x) && length(x) == 1L && !is.na(x) && abs(x - round(x)) < tol

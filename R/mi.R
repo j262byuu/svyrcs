@@ -131,6 +131,14 @@ print.svyrcs_mifit <- function(x, ...) {
 barnard_rubin_df <- function(u, b, m, nu_com) {
   out <- rep(nu_com, length.out = max(length(u), length(b)))
   live <- b > 0 & u > 0
+  ## With nu_com = Inf the complete-data correction has nothing to bound, so Barnard-Rubin reduces to
+  ## Rubin's original (m - 1)(1 + 1/r)^2. Guard it explicitly: (Inf + 1)/(Inf + 3) is NaN.
+  if (!is.finite(nu_com)) {
+    if (!any(live)) return(out)
+    r <- (1 + 1 / m) * b[live] / u[live]
+    out[live] <- (m - 1) * (1 + 1 / r)^2
+    return(out)
+  }
   if (!any(live)) return(out)
 
   bb <- b[live]

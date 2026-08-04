@@ -27,8 +27,8 @@ test_that("summary adds the curve shape and the significant ranges", {
 
   out <- capture.output(print(s))
   expect_true(any(grepl("Curve shape", out)))
-  expect_true(any(grepl("Lowest", out)))
-  expect_true(any(grepl("Highest", out)))
+  expect_true(any(grepl("Grid lowest", out)))
+  expect_true(any(grepl("Grid highest", out)))
 })
 
 test_that("the significant ranges really are where the band excludes the null", {

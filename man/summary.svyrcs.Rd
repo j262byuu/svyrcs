@@ -13,13 +13,26 @@
 }
 \value{
 An object of class \code{summary.svyrcs}, a list with the fit metadata, the two tests and a
-\code{features} component holding the minimum, the maximum and the significant ranges.
+\code{features} component holding the grid minimum, the grid maximum, and \code{significant}: the
+stretches over which the \strong{pointwise} band excludes the null.
 }
 \description{
 In addition to what \code{\link[=print]{print()}} shows, the summary reports the shape of the fitted curve: where the
 estimated effect is smallest and largest, and over which stretches of the exposure the confidence
 band excludes the null.
 }
+\section{These ranges are pointwise}{
+
+The band is a pointwise confidence band: each grid point has its own interval at the stated level.
+A stretch where those intervals exclude the null is therefore \strong{not} a simultaneous confidence
+region and carries no family-wise error control. With 200 grid points, some will cross a 95\%
+pointwise band by chance even when the true curve is flat. Read the ranges as a description of
+where the curve sits relative to the null, not as a multiplicity-corrected finding.
+
+The reported lowest and highest points are likewise the extremes of the evaluated grid, so they
+can move a little if \code{n} changes.
+}
+
 \examples{
 design <- survey::svydesign(
   id = ~psu, strata = ~strata, weights = ~weight,

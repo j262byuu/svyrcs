@@ -17,7 +17,8 @@ test_that("each glm family maps to the right effect measure", {
   cases <- list(
     list(f = tchol ~ rcs(bmi, 4) + age, family = NULL, measure = "Difference", null = 0),
     list(f = high_chol ~ rcs(bmi, 4) + age, family = quasibinomial(), measure = "OR", null = 1),
-    list(f = statin_use ~ rcs(bmi, 4) + age, family = quasipoisson(), measure = "RR", null = 1)
+    list(f = statin_use ~ rcs(bmi, 4) + age, family = quasipoisson(), measure = "Mean ratio",
+         null = 1)
   )
   for (cs in cases) {
     fit <- svyrcs(cs$f, design = design, family = cs$family)

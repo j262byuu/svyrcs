@@ -15,7 +15,8 @@ test_that("grouped fits work for every model family", {
     list(f = survival::Surv(time, event) ~ rcs(bmi, 4) * sex + age, family = NULL, measure = "HR"),
     list(f = tchol ~ rcs(bmi, 4) * sex + age, family = NULL, measure = "Difference"),
     list(f = high_chol ~ rcs(bmi, 4) * sex + age, family = quasibinomial(), measure = "OR"),
-    list(f = statin_use ~ rcs(bmi, 4) * sex + age, family = quasipoisson(), measure = "RR")
+    list(f = statin_use ~ rcs(bmi, 4) * sex + age, family = quasipoisson(),
+         measure = "Mean ratio")
   )
   for (cs in cases) {
     fit <- svyrcs(cs$f, design = design, family = cs$family)
