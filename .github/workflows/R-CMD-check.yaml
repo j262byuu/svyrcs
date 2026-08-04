@@ -41,7 +41,9 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          # V8 only on the manual job: without it the HTML manual check NOTEs with "Skipping checking
+          # math rendering", and this package's help does contain \eqn{} markup.
+          extra-packages: ${{ matrix.config.manual && 'any::rcmdcheck, any::V8' || 'any::rcmdcheck' }}
           needs: check
 
       - uses: r-lib/actions/setup-tinytex@v2
