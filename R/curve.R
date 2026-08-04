@@ -321,10 +321,24 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
     res
   }
 
+  ## Two different failures, and they had the same message until 0.6.3 -- or in the second case, no
+  ## message at all. A non-finite estimate is a coefficient problem; a finite estimate with a
+  ## non-finite interval is a variance problem, and blaming convergence for it sends the user to
+  ## inspect a model that fitted perfectly well.
   if (any(!is.finite(out$estimate))) {
     warning("the curve contains non-finite estimates, which means the underlying model did not ",
             "converge to finite coefficients -- perfect separation is the usual cause. Check the ",
             "fitted model before using these results.", call. = FALSE)
+  } else if (any(!is.finite(out$se) | !is.finite(out$conf.low) | !is.finite(out$conf.high))) {
+    ## Reachable with a replicate design whose `rscales` carry negative coefficients: survey takes
+    ## their square root, so vcov() comes back with NaN entries while the coefficients stay finite.
+    ## Everything downstream then looks ordinary -- the estimates print, the curve draws -- and the
+    ## only sign was base R's "NaNs produced" from sqrt().
+    warning("the curve has finite estimates but non-finite standard errors, so its confidence ",
+            "band is missing. The coefficients are fine; the problem is the variance. Check that ",
+            "vcov() of the fitted model is finite -- a replicate design with negative `rscales` is ",
+            "one way to get NaN there. The point estimates are still usable; the intervals are not.",
+            call. = FALSE)
   }
 
   structure(

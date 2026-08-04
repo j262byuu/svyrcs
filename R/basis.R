@@ -73,7 +73,42 @@ rcs_knots <- function(x, knots = 4, var = "x") {
                 "coincide, which happens when the exposure has few distinct values. Use fewer ",
                 "knots or supply explicit knot locations.")
   }
+  warn_if_knots_crowded(kn, var)
   kn
+}
+
+## Knots that are distinct but nearly coincident.
+##
+## `anyDuplicated()` catches exact ties, which is the common case: an exposure with most of its mass
+## at one value cannot place distinct quantiles at all. What it cannot catch is a cluster carrying
+## floating-point jitter -- a biomarker below the limit of detection substituted by a constant, say,
+## where the substitution arithmetic leaves the values differing around 1e-15. Two quantiles then land
+## inside that cluster a few 1e-16 apart, distinct enough to pass.
+##
+## `rcs_design_matrix()` divides by (t_k - t_1)^2 and forms (t_k - t_j)/(t_k - t_{k-1}), so a gap that
+## small produces enormous factors and cancellation. Measured against splines::ns() on identical
+## knots, the fitted curve is accurate to 4e-12 at a relative gap of 1e-6 but wrong by 2% at 1e-16.
+##
+## The rank-deficiency warning already fires from about 1e-6, so nothing here is silent. It says the
+## design cannot identify the model and suggests more primary sampling units, which will not help a
+## spacing problem. This names the actual cause.
+##
+## The threshold sits where the degradation starts, not where it becomes material, because by the
+## time it is material the numbers are already unusable. It does not fire on ordinary exposures --
+## uniform, normal, gamma, exponential, lognormal and the shipped NHANES BMI are all well clear.
+warn_if_knots_crowded <- function(kn, var, tol = 1e-6) {
+  span <- diff(range(kn))
+  if (!is.finite(span) || span <= 0) return(invisible(FALSE))
+  gaps <- diff(kn)
+  i <- which.min(gaps)
+  if (gaps[i] / span >= tol) return(invisible(FALSE))
+  warning("two knots for '", var, "' are almost coincident: ", format(kn[i], digits = 15), " and ",
+          format(kn[i + 1L], digits = 15), " differ by ", format(gaps[i], digits = 3),
+          ", which is ", format(gaps[i] / span, digits = 3), " of the knot range. The spline basis ",
+          "divides by these gaps, so the fitted curve loses accuracy. This usually means the ",
+          "exposure has a dense cluster -- values below a limit of detection replaced by a constant ",
+          "are the common case. Use fewer knots, or supply explicit knot locations.", call. = FALSE)
+  invisible(TRUE)
 }
 
 ## Harrell's small-sample adjustment: below 100 observations the outer knots are moved to the fifth

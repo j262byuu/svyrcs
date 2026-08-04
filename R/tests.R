@@ -9,9 +9,25 @@
 ## interaction columns -- transforms once and this function stays basis-agnostic.
 wald_block <- function(beta, V, degf, what, mi = NULL) {
   df1 <- length(beta)
+  ## `reason` travels with the result so print() does not have to guess why F is NA. It used to guess,
+  ## and it guessed "a linear term only" for every cause -- including a singular covariance, which
+  ## says the design cannot support the model rather than that the formula is wrong. The two send a
+  ## user in opposite directions.
   if (df1 < 1L) {
     return(list(chisq = NA_real_, F = NA_real_, df1 = 0L, df2 = degf,
-                p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else 0))
+                p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else 0,
+                reason = "linear"))
+  }
+
+  ## A vcov with NaN entries does not make solve() throw -- it returns NaN, so the singularity branch
+  ## below never fires and the statistic silently becomes NaN. Catch it before that.
+  if (!all(is.finite(V)) || (!is.null(mi) && (!all(is.finite(mi$Ubar)) || !all(is.finite(mi$B))))) {
+    warning("the ", what, " test is not computable: the covariance block contains non-finite ",
+            "values, so no Wald statistic exists. The coefficients may still be fine -- check ",
+            "vcov() of the fitted model.", call. = FALSE)
+    return(list(chisq = NA_real_, F = NA_real_, df1 = df1, df2 = degf,
+                p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else NA_real_,
+                reason = "non-finite"))
   }
   ## Under imputation the joint test is D1, not a Wald statistic on the pooled covariance. The
   ## statistic, its denominator degrees of freedom and the reported chi-square all come from there.
@@ -22,7 +38,7 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
               "singular, so the design cannot identify this model. Estimates are still shown, but ",
               "their confidence intervals are not trustworthy.", call. = FALSE)
       return(list(chisq = NA_real_, F = NA_real_, df1 = df1, df2 = degf,
-                  p_chisq = NA_real_, p_F = NA_real_, fmi = NA_real_))
+                  p_chisq = NA_real_, p_F = NA_real_, fmi = NA_real_, reason = "singular"))
     }
     return(list(
       chisq = d1$F * df1,
@@ -31,7 +47,8 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
       df2 = d1$v,
       p_chisq = stats::pchisq(d1$F * df1, df = df1, lower.tail = FALSE),
       p_F = stats::pf(d1$F, df1 = df1, df2 = d1$v, lower.tail = FALSE),
-      fmi = d1$r / (1 + d1$r)
+      fmi = d1$r / (1 + d1$r),
+      reason = NA_character_
     ))
   }
 
@@ -46,7 +63,8 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
             "amount of information in the data; try fewer knots. Estimates are still shown, but ",
             "their confidence intervals are not trustworthy.", call. = FALSE)
     return(list(chisq = NA_real_, F = NA_real_, df1 = df1, df2 = degf,
-                p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else NA_real_))
+                p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else NA_real_,
+                reason = "singular"))
   }
   chisq <- as.numeric(t(beta) %*% Vinv %*% beta)
   Fstat <- chisq / df1
@@ -58,7 +76,8 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
     df2 = degf,
     p_chisq = stats::pchisq(chisq, df = df1, lower.tail = FALSE),
     p_F = stats::pf(Fstat, df1 = df1, df2 = degf, lower.tail = FALSE),
-    fmi = NULL
+    fmi = NULL,
+    reason = NA_character_
   )
 }
 
@@ -85,7 +104,8 @@ rcs_tests <- function(beta, V, degf, mi = NULL) {
     wald_block(beta[-1L], V[-1L, -1L, drop = FALSE], degf, "non-linearity", mi_subset(mi, -1L))
   } else {
     list(chisq = NA_real_, F = NA_real_, df1 = 0L, df2 = degf,
-         p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else 0)
+         p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else 0,
+         reason = "linear")
   }
   list(overall = overall, nonlinear = nonlinear)
 }
@@ -118,7 +138,8 @@ interaction_tests <- function(beta, V, modifier, degf, mi = NULL) {
                "shape interaction", mi_subset(mi, shape_cols))
   } else {
     list(chisq = NA_real_, F = NA_real_, df1 = 0L, df2 = degf,
-         p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else 0)
+         p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else 0,
+         reason = "linear")
   }
 
   list(

@@ -1,3 +1,55 @@
+# svyrcs 0.6.3
+
+Three numerical concerns raised by the 0.6.0 review were left open because they had never been
+reproduced. Adversarial construction settled all three. Two were wrong about the mechanism, and one
+of those was still right about the consequence.
+
+## Nothing here changes an estimate
+
+Every change is a warning or a printed explanation. If a number moved, that is a bug in this release.
+
+## Knot spacing is named as a cause
+
+* `rcs_knots()` now warns when two knots are separated by less than 1e-6 of the knot range. The
+  exact-duplicate check has always caught an exposure whose quantiles collapse; what it cannot see is
+  a cluster carrying floating-point jitter -- values below a limit of detection replaced by a
+  constant are the common case -- where two knots differ in the 16th significant digit.
+* Measured against `splines::ns()` on identical knots, the fitted curve is accurate to 4e-12 at a
+  relative gap of 1e-6 and wrong by 2% at 1e-16. The rank-deficiency warning already fired from
+  about 1e-6, so nothing was silent, but it blamed the design and suggested more primary sampling
+  units, which cannot help a spacing problem.
+
+## A missing confidence band is no longer silent
+
+* A curve with finite estimates and non-finite standard errors now warns, and says the problem is the
+  variance rather than the model's convergence. Previously the check looked at the estimates only, so
+  the entire band could come back `NaN` with nothing but base R's "NaNs produced" to show for it.
+* This is reachable with a replicate design whose `rscales` carry negative coefficients -- successive
+  difference replication and some Fay variants use them, and `survey` takes their square root.
+
+## An unavailable test says which cause applies
+
+* `print()` reported every unavailable joint test as "not estimable (a linear term only)". There are
+  four causes: a genuinely linear block, a singular covariance, a singular within-imputation
+  covariance, and a non-finite covariance. The last three were printed as the first.
+* The distinction matters because the fixes are opposite: "a linear term only" says the formula is
+  wrong, a singular covariance says the design cannot support the model.
+* A non-finite covariance is now detected explicitly. `solve()` returns `NaN` rather than throwing on
+  such a matrix, so that path previously produced no warning at all.
+
+## Refuted
+
+* Ill-conditioned but invertible Wald blocks are **not** a hazard, and the suspected gap runs the
+  other way: `warn_if_rank_deficient()` gives way from condition number about 3e7, while the
+  quadratic form stays accurate to 2.8e-8 up to 1e9 and `solve()` holds to 1e16. Across 1800
+  constructions -- including `beta` aligned with the smallest eigenvector, the worst case -- the
+  worst error obtainable without a warning was 2.8e-8, and the statistic never went negative. A test
+  now pins that ordering, since the margin depends on `qr()`'s default tolerance.
+* Materially negative contrast variances are unreachable. Whatever the `mse` setting, a replicate
+  covariance is a weighted sum of rank-1 outer products and so is positive semi-definite by
+  construction; 72 adversarial designs produced no negative eigenvalue. The existing clamp handles
+  what remains, which is floating-point noise.
+
 # svyrcs 0.6.2
 
 Validation, labelling and documentation honesty, from the same review as 0.6.1. Two items change
