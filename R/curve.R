@@ -75,6 +75,23 @@ fit_design <- function(fit) {
   if (inherits(d, "survey.design") || inherits(d, "svyrep.design")) d else NULL
 }
 
+## Does the fitted model carry an offset? An offset of person-time is what turns a count model into
+## a rate model, and it is the only thing that distinguishes the two here.
+has_offset <- function(fit) {
+  tt <- tryCatch(stats::terms(fit), error = function(e) NULL)
+  if (is.null(tt)) return(FALSE)
+  if (length(attr(tt, "offset"))) return(TRUE)
+  any(grepl("offset(", as.character(attr(tt, "variables")), fixed = TRUE))
+}
+
+log_link_measure <- function(fit, fname) {
+  if (grepl("poisson|binomial", fname)) {
+    if (has_offset(fit)) "Rate ratio" else "Mean ratio"
+  } else {
+    "Ratio"
+  }
+}
+
 ## Effect measure and whether the linear-predictor contrast should be exponentiated.
 effect_measure <- function(fit) {
   if (inherits(fit, "coxph")) {
@@ -86,13 +103,10 @@ effect_measure <- function(fit) {
   switch(
     link,
     logit = list(measure = "OR", exponentiate = TRUE, null = 1),
-    ## A log link on a count or binary family gives a risk or rate ratio; on a gaussian one it is a
-    ## ratio of means, which is not the same thing and should not be labelled RR.
-    log = if (grepl("poisson|binomial", fname)) {
-      list(measure = "RR", exponentiate = TRUE, null = 1)
-    } else {
-      list(measure = "Ratio", exponentiate = TRUE, null = 1)
-    },
+    ## A log link is always a ratio, but of what depends on the model. With person-time in an
+    ## offset it is a rate ratio; a count model without one compares expected counts; on a gaussian
+    ## family it is a ratio of means. Calling all of them "RR" claims more than was fitted.
+    log = list(measure = log_link_measure(fit, fname), exponentiate = TRUE, null = 1),
     identity = list(measure = "Difference", exponentiate = FALSE, null = 0),
     {
       warning("no standard effect measure for the '", link, "' link; reporting contrasts on the ",
@@ -189,6 +203,9 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate,
 #'   [survey::svyglm()] and [survey::svycoxph()] keep. Needed for weighted reference values and
 #'   ranges.
 #' @param degf Design degrees of freedom for the *t* quantile. Defaults to `survey::degf(design)`.
+#' @param df Denominator degrees of freedom to use instead of the design's. `NULL` (default) keeps
+#'   `survey::degf(design)`; a number substitutes it; `Inf` gives normal-quantile intervals. See the
+#'   note in [svyrcs()] on why this is a policy rather than a fixed answer.
 #' @param group When the spline is interacted with an effect modifier, the level or levels to
 #'   estimate. `NULL` (default) returns every level, stacked, with a `group` column.
 #'
@@ -210,7 +227,8 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate,
 #'
 #' @export
 svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = NULL, n = 200,
-                         range = NULL, level = 0.95, design = NULL, degf = NULL, group = NULL) {
+                         range = NULL, level = 0.95, design = NULL, degf = NULL, group = NULL,
+                         df = NULL) {
   term <- find_rcs_term(fit, var)
   spline_coef_index(fit, term)  # validates that the main effects are present
   modifier <- find_modifier(fit, term)
@@ -226,9 +244,11 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
   designs <- as_design_list(design)
   degf <- degf %||% (if (inherits(fit, "svyrcs_mifit")) fit$degf
                      else if (!is.null(designs)) survey::degf(designs[[1L]]) else NULL)
-  if (is.null(degf) || !is.finite(degf) || degf <= 0) {
-    stop_svyrcs("could not determine the survey degrees of freedom; pass `degf` explicitly")
-  }
+  ## `df` overrides the design degrees of freedom. Which denominator to use is an inference policy,
+  ## not a fact: the design df is a conservative default that treats every covariate as though it
+  ## varied at the PSU level, and Inf gives the normal approximation. survey::regTermTest() takes a
+  ## `df` argument for the same reason.
+  degf <- resolve_df(df, degf)
   if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
     stop_svyrcs("`level` must be a single number strictly between 0 and 1")
   }

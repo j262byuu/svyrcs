@@ -137,10 +137,17 @@ test_that("a log link on a gaussian family is a ratio, not a risk ratio", {
   expect_equal(fit$measure, "Ratio")
   expect_equal(fit$null, 1)
 
-  ## a log link on a count family really is a rate ratio
+  ## A count model without person-time compares expected counts, not rates.
   fit2 <- svyrcs(statin_use ~ rcs(bmi, 4) + age, design = nhanes_design(),
                  family = quasipoisson(), n = 5)
-  expect_equal(fit2$measure, "RR")
+  expect_equal(fit2$measure, "Mean ratio")
+
+  ## with an offset it really is a rate ratio
+  design <- nhanes_design()
+  design$variables$py <- pmax(nhanes_bmi$time, 0.1)
+  fit3 <- svyrcs(event ~ rcs(bmi, 4) + age + offset(log(py)), design = design,
+                 family = quasipoisson(), n = 5)
+  expect_equal(fit3$measure, "Rate ratio")
 })
 
 test_that("non-finite estimates are flagged rather than returned silently", {

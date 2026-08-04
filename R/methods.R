@@ -9,7 +9,8 @@ model_description <- function(object) {
 ##
 ## Reported because it is the question a reader of the plot actually asks -- "over what range of the
 ## exposure is the association distinguishable from no effect?" -- and reading it off a figure is
-## guesswork.
+## guesswork. The band is pointwise, so these are stretches where each individual interval excludes
+## the null, not a region with family-wise error control; the wording says so wherever they appear.
 significant_ranges <- function(curve, null) {
   above <- curve$conf.low > null
   below <- curve$conf.high < null
@@ -90,6 +91,9 @@ print.svyrcs <- function(x, ...) {
               round(x$degf)))
   cat(sprintf("  Reference  %s = %s (%s), %s = %s\n", x$var, fmt_num(x$ref$value, 4),
               x$ref$method, x$measure, format(x$null)))
+  if (grepl("risk point", x$ref$method)) {
+    cat("             selected from these data; its own uncertainty is not in the band\n")
+  }
   if (isTRUE(x$n_dropped > 0L)) {
     cat(sprintf("  Dropped    %s rows with missing values\n",
                 format(x$n_dropped, big.mark = ",")))
@@ -131,11 +135,22 @@ print.svyrcs <- function(x, ...) {
 #' estimated effect is smallest and largest, and over which stretches of the exposure the confidence
 #' band excludes the null.
 #'
+#' @section These ranges are pointwise:
+#' The band is a pointwise confidence band: each grid point has its own interval at the stated level.
+#' A stretch where those intervals exclude the null is therefore **not** a simultaneous confidence
+#' region and carries no family-wise error control. With 200 grid points, some will cross a 95%
+#' pointwise band by chance even when the true curve is flat. Read the ranges as a description of
+#' where the curve sits relative to the null, not as a multiplicity-corrected finding.
+#'
+#' The reported lowest and highest points are likewise the extremes of the evaluated grid, so they
+#' can move a little if `n` changes.
+#'
 #' @param object An object from [svyrcs()].
 #' @param ... Ignored.
 #'
 #' @return An object of class `summary.svyrcs`, a list with the fit metadata, the two tests and a
-#'   `features` component holding the minimum, the maximum and the significant ranges.
+#'   `features` component holding the grid minimum, the grid maximum, and `significant`: the
+#'   stretches over which the **pointwise** band excludes the null.
 #'
 #' @examples
 #' design <- survey::svydesign(
@@ -154,18 +169,20 @@ summary.svyrcs <- function(object, ...) {
 }
 
 print_features <- function(f, fit, indent = "    ") {
-  cat(sprintf("%sLowest    %s = %s,  %s\n", indent, fit$var, fmt_num(f$min$x, 4),
+  ## "grid" because these are the extreme points of the evaluated curve, so they can shift slightly
+  ## when `n` changes; they are not a continuous optimum.
+  cat(sprintf("%sGrid lowest   %s = %s,  %s\n", indent, fit$var, fmt_num(f$min$x, 4),
               fmt_effect(f$min, fit$measure)))
-  cat(sprintf("%sHighest   %s = %s,  %s\n", indent, fit$var, fmt_num(f$max$x, 4),
+  cat(sprintf("%sGrid highest  %s = %s,  %s\n", indent, fit$var, fmt_num(f$max$x, 4),
               fmt_effect(f$max, fit$measure)))
 
   sig <- f$significant
   if (!nrow(sig)) {
-    cat(sprintf("%sThe %g%% band includes %s = %s across the whole range\n",
+    cat(sprintf("%sThe pointwise %g%% band includes %s = %s across the whole range\n",
                 indent, 100 * fit$level, fit$measure, format(fit$null)))
   } else {
-    cat(sprintf("%s%g%% band excludes %s = %s over:\n", indent, 100 * fit$level, fit$measure,
-                format(fit$null)))
+    cat(sprintf("%sPointwise %g%% band excludes %s = %s over:\n", indent, 100 * fit$level,
+                fit$measure, format(fit$null)))
     for (i in seq_len(nrow(sig))) {
       cat(sprintf("%s  %s %s to %s  (%s %s %s)\n", indent, fit$var,
                   fmt_num(sig$from[i], 4), fmt_num(sig$to[i], 4), fit$measure,

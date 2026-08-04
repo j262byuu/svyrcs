@@ -125,6 +125,10 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #' @param range Length-2 numeric giving the exposure range to estimate over. Defaults to the 1st and
 #'   99th survey-weighted percentiles.
 #' @param level Confidence level for the band.
+#' @param df Denominator degrees of freedom for the confidence band and the tests. `NULL` (default)
+#'   uses `survey::degf(design)`; a number substitutes it; `Inf` gives normal-quantile intervals and
+#'   chi-square-equivalent tests. Under multiple imputation this is the complete-data degrees of
+#'   freedom that the Barnard-Rubin correction starts from.
 #' @param ... Passed on to [survey::svycoxph()] or [survey::svyglm()].
 #'
 #' @return An object of class `svyrcs`, a list with components:
@@ -195,11 +199,23 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #' Building the imputations is not this package's job — use `mice` or similar, then hand the
 #' completed datasets over.
 #'
+#' @section Which degrees of freedom:
+#' By default the confidence band and the tests use `survey::degf(design)`, the number of primary
+#' sampling units minus the number of strata. That is a deliberate conservative default rather than
+#' the only defensible answer: it behaves as though every covariate varied only between PSUs, which
+#' is right for design variables and cautious for individual-level ones. `survey::regTermTest()`
+#' exposes the same choice for the same reason.
+#'
+#' `df` overrides it. A larger value, or `Inf` for the normal approximation, gives narrower
+#' intervals; use it deliberately and say so in the write-up, because with few PSUs the difference is
+#' not small.
+#'
 #' @section Why not just use `rms`:
 #' `rms::rcs()` gives the same basis, but `rms` fitting functions do not know about sampling weights,
 #' clustering or stratification, and `survey` has no spline helper. `svyrcs` bridges the two: the
 #' spline is fitted inside a `survey` model, so point estimates use the weights and the confidence
-#' band uses Taylor linearisation on the design degrees of freedom.
+#' band uses the variance estimator the design implies -- Taylor linearisation for an ordinary
+#' design, replicate-weight variance for a replicate design.
 #'
 #' @seealso [svyrcs_curve()] for curves from a model you fitted yourself, [rcs()] for the basis,
 #'   [references] for reference values.
@@ -234,7 +250,7 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #'
 #' @export
 svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.5,
-                   weighted_knots = TRUE, n = 200, range = NULL, level = 0.95, ...) {
+                   weighted_knots = TRUE, n = 200, range = NULL, level = 0.95, df = NULL, ...) {
   cl <- match.call()
 
   if (!inherits(design, c("survey.design", "svyrep.design")) && !is_mi_design(design)) {
@@ -359,6 +375,7 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   beta <- stats::coef(model)
   V <- stats::vcov(model)
 
+  degf <- resolve_df(df, degf)
   curve <- svyrcs_curve(model, var = var, ref = ref, ref_prob = ref_prob, n = n, range = range,
                         level = level, design = designs, degf = degf)
   tests <- assemble_tests(beta, V, term, modifier, degf, mi_context(model))

@@ -15,7 +15,8 @@ svyrcs_curve(
   level = 0.95,
   design = NULL,
   degf = NULL,
-  group = NULL
+  group = NULL,
+  df = NULL
 )
 }
 \arguments{
@@ -47,6 +48,10 @@ ranges.}
 
 \item{group}{When the spline is interacted with an effect modifier, the level or levels to
 estimate. \code{NULL} (default) returns every level, stacked, with a \code{group} column.}
+
+\item{df}{Denominator degrees of freedom to use instead of the design's. \code{NULL} (default) keeps
+\code{survey::degf(design)}; a number substitutes it; \code{Inf} gives normal-quantile intervals. See the
+note in \code{\link[=svyrcs]{svyrcs()}} on why this is a policy rather than a fixed answer.}
 }
 \value{
 A data frame of class \code{svyrcs_curve} with columns \code{x}, \code{estimate}, \code{conf.low},

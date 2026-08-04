@@ -6,7 +6,8 @@ test_that("all four model families work on an imputed design", {
          measure = "HR"),
     list(f = bmi ~ rcs(age, 4) + sex + tchol, family = NULL, measure = "Difference"),
     list(f = high_chol ~ rcs(bmi, 4) + age + hdl, family = quasibinomial(), measure = "OR"),
-    list(f = statin_use ~ rcs(bmi, 4) + age + tchol, family = quasipoisson(), measure = "RR")
+    list(f = statin_use ~ rcs(bmi, 4) + age + tchol, family = quasipoisson(),
+         measure = "Mean ratio")
   )
   for (cs in cases) {
     fit <- svyrcs(cs$f, design = designs, family = cs$family)

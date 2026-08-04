@@ -12,7 +12,7 @@
 ## in a coefficient name. Level j's effective spline coefficients are then
 ## `beta_main + sum_k C[j, k] * beta_interaction_k`, which reduces to the 0/1 case for treatment
 ## contrasts.
-modifier_contrasts <- function(x, var) {
+modifier_contrasts <- function(x, var, fitted = NULL) {
   if (is.logical(x)) x <- factor(x, levels = c("FALSE", "TRUE"))
   if (is.character(x)) x <- factor(x)
   if (!is.factor(x)) {
@@ -21,7 +21,11 @@ modifier_contrasts <- function(x, var) {
                 "variable. Continuous effect modification is not supported.")
   }
   levs <- levels(x)
-  C <- stats::contrasts(x)
+  C <- if (!is.null(fitted) && is.matrix(fitted) && nrow(fitted) == length(levs)) {
+    fitted
+  } else {
+    stats::contrasts(x)
+  }
   if (is.null(dim(C))) C <- matrix(C, nrow = length(levs))
   rownames(C) <- levs
   if (is.null(colnames(C))) colnames(C) <- as.character(seq_len(ncol(C)))
@@ -83,7 +87,11 @@ find_modifier <- function(fit, term) {
   if (is.null(modvals)) {
     stop_svyrcs("could not recover the effect modifier '", mod, "' from the fitted model")
   }
-  mc <- modifier_contrasts(modvals, mod)
+  ## fit$contrasts records the coding the model matrix was actually built with, including one
+  ## supplied through contrasts.arg rather than attached to the factor. Fall back to the factor's own
+  ## contrasts when the fit does not keep them.
+  fitted_contr <- tryCatch(fit$contrasts[[mod]], error = function(e) NULL)
+  mc <- modifier_contrasts(modvals, mod, fitted_contr)
   levs <- mc$levels
   C <- mc$contrasts
   if (length(levs) < 2L) {

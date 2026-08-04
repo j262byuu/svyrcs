@@ -15,8 +15,8 @@ supports the reference choices commonly seen in the survey literature.
 \item{\code{"median"}}{The survey-weighted median of the exposure. The default.}
 \item{\code{"mean"}}{The survey-weighted mean.}
 \item{\code{"quantile"}}{The survey-weighted quantile at \code{ref_prob}.}
-\item{\code{"min"}}{The exposure value at which the fitted curve is lowest: the minimum-risk point.}
-\item{\code{"max"}}{The exposure value at which the fitted curve is highest.}
+\item{\code{"min"}}{The grid point at which the fitted curve is lowest.}
+\item{\code{"max"}}{The grid point at which the fitted curve is highest.}
 }
 
 Weighted quantiles and means are computed from the survey design with \code{\link[survey:svyquantile]{survey::svyquantile()}} and
@@ -24,5 +24,25 @@ Weighted quantiles and means are computed from the survey design with \code{\lin
 unweighted sample. \code{"min"} and \code{"max"} are found by evaluating the curve on a dense grid against a
 provisional (weighted median) reference; because the reference only shifts the curve, the located
 point does not depend on that provisional choice.
+}
+
+\section{Selected references are descriptive}{
+
+\code{"min"} and \code{"max"} choose an anchor \strong{from the same data that produced the curve}, and that
+choice carries sampling uncertainty which the confidence band does not propagate. Two consequences
+worth stating plainly:
+\itemize{
+\item At the selected point the estimate equals the null with a standard error of zero. That is an
+artefact of anchoring the contrast there, not evidence that the null holds at that exposure.
+\item The location itself is not estimated with the precision the plot suggests. In another sample the
+minimum could sit some distance away, particularly where the curve is flat near its bottom.
+}
+
+Treat them as a presentational choice — "excess risk relative to the healthiest observed value" —
+rather than as an estimate of an optimum. Reporting a confidence interval for the location would
+need a bootstrap or replicate-weight distribution over refits, which this package does not
+currently provide.
+
+Both are also grid searches, so the answer can shift slightly with \code{n}.
 }
 

@@ -14,6 +14,7 @@ svyrcs(
   n = 200,
   range = NULL,
   level = 0.95,
+  df = NULL,
   ...
 )
 }
@@ -48,6 +49,11 @@ always used as given.}
 99th survey-weighted percentiles.}
 
 \item{level}{Confidence level for the band.}
+
+\item{df}{Denominator degrees of freedom for the confidence band and the tests. \code{NULL} (default)
+uses \code{survey::degf(design)}; a number substitutes it; \code{Inf} gives normal-quantile intervals and
+chi-square-equivalent tests. Under multiple imputation this is the complete-data degrees of
+freedom that the Barnard-Rubin correction starts from.}
 
 \item{...}{Passed on to \code{\link[survey:svycoxph]{survey::svycoxph()}} or \code{\link[survey:svyglm]{survey::svyglm()}}.}
 }
@@ -133,12 +139,26 @@ Building the imputations is not this package's job — use \code{mice} or simila
 completed datasets over.
 }
 
+\section{Which degrees of freedom}{
+
+By default the confidence band and the tests use \code{survey::degf(design)}, the number of primary
+sampling units minus the number of strata. That is a deliberate conservative default rather than
+the only defensible answer: it behaves as though every covariate varied only between PSUs, which
+is right for design variables and cautious for individual-level ones. \code{survey::regTermTest()}
+exposes the same choice for the same reason.
+
+\code{df} overrides it. A larger value, or \code{Inf} for the normal approximation, gives narrower
+intervals; use it deliberately and say so in the write-up, because with few PSUs the difference is
+not small.
+}
+
 \section{Why not just use \code{rms}}{
 
 \code{rms::rcs()} gives the same basis, but \code{rms} fitting functions do not know about sampling weights,
 clustering or stratification, and \code{survey} has no spline helper. \code{svyrcs} bridges the two: the
 spline is fitted inside a \code{survey} model, so point estimates use the weights and the confidence
-band uses Taylor linearisation on the design degrees of freedom.
+band uses the variance estimator the design implies -- Taylor linearisation for an ordinary
+design, replicate-weight variance for a replicate design.
 }
 
 \examples{

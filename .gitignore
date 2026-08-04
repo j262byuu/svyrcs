@@ -5,3 +5,6 @@
 docs/
 *.tar.gz
 *.Rcheck/
+
+# test artefacts
+tests/testthat/Rplots.pdf
