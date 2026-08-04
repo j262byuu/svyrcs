@@ -19,7 +19,9 @@ jobs:
           - {os: macos-latest,   r: 'release'}
           - {os: windows-latest, r: 'release'}
           - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,  r: 'release'}
+          # CRAN builds the PDF manual, so one job has to. Rd markup errors surface nowhere else --
+          # not in the HTML manual, not in the Rd checks -- and until 0.6.2 no job here built it.
+          - {os: ubuntu-latest,  r: 'release', manual: true}
           - {os: ubuntu-latest,  r: 'oldrel-1'}
 
     env:
@@ -42,10 +44,39 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
+      - uses: r-lib/actions/setup-tinytex@v2
+        if: matrix.config.manual
+
+      # TinyTeX's base install omits makeindex, which Rd2pdf needs. Without it the manual compiles
+      # and then fails at the index step, which reads like an Rd problem but is not.
+      - name: Install the LaTeX packages Rd2pdf needs
+        if: matrix.config.manual
+        run: tlmgr install makeindex inconsolata times helvetic dejavu
+
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
+          # The action's default drops the manual on every job. Keep it only where LaTeX was
+          # installed above.
+          args: ${{ matrix.config.manual && 'c("--as-cran")' || 'c("--no-manual", "--as-cran")' }}
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+      # A green job is not evidence the manual was built: reinstate --no-manual, or lose the LaTeX
+      # install, and this job goes on passing while silently skipping the step it exists for. That
+      # is exactly how the no-ggplot2 job below was found to be testing nothing.
+      - name: Confirm the PDF manual really was built
+        if: matrix.config.manual
+        run: |
+          log <- list.files(".", "^00check[.]log$", recursive = TRUE, full.names = TRUE)
+          if (length(log) != 1) stop("expected exactly one 00check.log, found ", length(log))
+          txt <- readLines(log, warn = FALSE)
+          hit <- grep("checking PDF version of manual", txt, value = TRUE)
+          if (!length(hit)) {
+            stop("the check log has no 'PDF version of manual' line, so the manual was skipped")
+          }
+          if (!any(grepl("OK", hit))) stop("the manual step did not pass: ", paste(hit, collapse = "; "))
+          cat(hit, sep = "\n")
+        shell: Rscript {0}
 
   # ggplot2 is a Suggests, and plot() is meant to fall back to base graphics without it. The matrix
   # above cannot verify that, because setup-r-dependencies installs Suggests -- every run there has
