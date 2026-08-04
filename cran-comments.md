@@ -2,7 +2,7 @@
 
 ## Submission
 
-svyrcs 0.6.0 — new submission.
+svyrcs 0.6.1 — new submission.
 
 The package fits restricted cubic splines inside `survey` models, so that exposure-response curves
 for complex survey data (NHANES and similar) are estimated with sampling weights and design-based
@@ -64,7 +64,7 @@ Examples run in well under 5 seconds each. Three survival examples, which fit su
 models, are wrapped in `\donttest{}` to keep the total example time low; they run cleanly under
 `--run-donttest`, which was included in every check above.
 
-The test suite is 786 tests and takes about 60 seconds. Tests that need a `Suggests` package are
+The test suite is 808 tests and takes about 60 seconds. Tests that need a `Suggests` package are
 guarded with `skip_if_not_installed()`.
 
 ## Dependencies

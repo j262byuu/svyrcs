@@ -150,8 +150,13 @@ rcs <- function(x, knots = 4) {
 #'
 #' @export
 makepredictcall.svyrcs_basis <- function(var, call) {
-  if (as.character(call)[1L] != "rcs") return(call)
-  ## Drop every argument except x, so a positional `knots` cannot collide with the one we add back.
+  ## Match the namespaced forms too. Matching the bare name only meant `lm(y ~ svyrcs::rcs(x, 4))`
+  ## recorded the count-based call and re-derived knots from newdata: a model trained on an exposure
+  ## of 1-100 predicted a grid near 1000 using knots near 1000. svyrcs() itself was unaffected,
+  ## because it inlines the knots before fitting -- which is exactly why the tests missed this.
+  if (!is_call_to(call, "rcs")) return(call)
+  ## Keep element 1 (the possibly-qualified function) and element 2 (x), dropping everything else so
+  ## a positional `knots` cannot collide with the one added back.
   out <- call[1L:2L]
   out$knots <- attr(var, "knots")
   out

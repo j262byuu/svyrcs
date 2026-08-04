@@ -129,7 +129,9 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #'   uses `survey::degf(design)`; a number substitutes it; `Inf` gives normal-quantile intervals and
 #'   chi-square-equivalent tests. Under multiple imputation this is the complete-data degrees of
 #'   freedom that the Barnard-Rubin correction starts from.
-#' @param ... Passed on to [survey::svycoxph()] or [survey::svyglm()].
+#' @param ... Passed on to [survey::svycoxph()] or [survey::svyglm()]. `subset` is refused: it would
+#'   be applied after the knots and the reference had already been derived, so subset the design
+#'   instead, with `subset(design, ...)`.
 #'
 #' @return An object of class `svyrcs`, a list with components:
 #'   \describe{
@@ -278,6 +280,15 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
                 "outcome ~ rcs(bmi, 4) + age")
   }
 
+  ## `subset` would be applied by the fitting function after knots and the reference were already
+  ## derived, reproducing the very bug this task fixes. Refuse it and point at the survey idiom.
+  dots <- ...names()
+  if (!is.null(dots) && "subset" %in% dots) {
+    stop_svyrcs("`subset` is not supported, because it would be applied after the knots and the ",
+                "reference have been derived from the full design. Subset the design first: ",
+                "svyrcs(formula, design = subset(design, <condition>)).")
+  }
+
   rcs_calls <- collect_rcs_calls(formula[[3L]])
   if (length(rcs_calls) == 0L) {
     stop_svyrcs("`formula` must contain an rcs() term for the exposure, for example ",
@@ -318,13 +329,22 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   ## model drop rows leaves point estimates and standard errors unchanged -- survey's subsetting is
   ## proper domain estimation -- and lowers the degrees of freedom only when a whole PSU contributes
   ## no complete case, which is the honest answer in that situation.
-  model_vars <- intersect(all.vars(formula), names(designs[[1L]]$variables))
-  keeps <- lapply(designs, function(d) stats::complete.cases(d$variables[model_vars]))
+  ## Which rows will the model actually use? Evaluate the model frame rather than reconstructing the
+  ## answer from the raw columns. `complete.cases()` on the design variables cannot see a value that
+  ## only becomes non-finite once the formula is evaluated -- log(z) for z <= 0, 1/z for z == 0 --
+  ## so those rows passed the mask, were then dropped by the fitting function, and knots, reference
+  ## and range were derived from rows the model never saw. In testing that moved an outer knot by
+  ## 14.6 units with nothing in the output to show it.
+  ##
+  ## This is the third appearance of the same class of defect. The rule now is that the analytic
+  ## sample is taken from an evaluated model frame, never rebuilt alongside one.
+  keeps <- lapply(designs, function(d) analytic_rows(formula, d$variables))
   keep <- Reduce(`&`, keeps)
   n_design <- nrow(designs[[1L]]$variables)
   if (!any(keep)) {
-    stop_svyrcs("no rows have complete data for every variable in the formula (",
-                paste(model_vars, collapse = ", "), "), so there is nothing to fit")
+    stop_svyrcs("no rows have usable data for every term in the formula, so there is nothing to ",
+                "fit. Check for variables that are missing, or transformations such as log() that ",
+                "are undefined over part of their range.")
   }
   mask_cost <- if (imputed) max(vapply(keeps, sum, integer(1L))) - sum(keep) else 0L
   designs <- lapply(designs, function(d) d[keep, ])

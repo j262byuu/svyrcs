@@ -70,6 +70,9 @@ spline_coef_index <- function(fit, term) {
 
 ## The survey design a model was fitted to, if it kept one.
 fit_design <- function(fit) {
+  ## A pooled fit has one design per imputation; hand back the list so weighted references are
+  ## resolved across all of them rather than defaulting to the first.
+  if (inherits(fit, "svyrcs_mifit")) return(mi_designs(fit))
   d <- fit$survey.design
   if (is.null(d)) d <- fit$design
   if (inherits(d, "survey.design") || inherits(d, "svyrep.design")) d else NULL
