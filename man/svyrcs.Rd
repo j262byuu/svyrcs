@@ -126,6 +126,17 @@ parameters and Rubin's rules would not apply.
 The curve then carries two extra columns, \code{df} and \code{fmi}: the degrees of freedom used at that
 point and the fraction of missing information there.
 
+\strong{The joint tests.} The overall, non-linearity, interaction and per-group tests use
+\strong{D1} (Li, Raghunathan and Rubin 1991): the statistic is
+\eqn{\bar{Q}' [(1 + r)\bar{U}]^{-1} \bar{Q} / k} with
+\eqn{r = (1 + 1/m)\,\mathrm{tr}(B\bar{U}^{-1})/k}, referred to an \emph{F} distribution whose
+denominator degrees of freedom come from Reiter (2007). Reiter's correction is the one that
+accounts for a finite complete-data degrees of freedom, which is exactly the survey situation.
+
+Where \eqn{k(m-1) \le 4} that correction is undefined -- it contains \eqn{1/(k(m-1)-4)} -- and
+the package warns and falls back to the complete-data degrees of freedom. Raising the number of
+imputations is the fix.
+
 \strong{On the degrees of freedom.} \code{mitools::MIcombine()} reports
 \eqn{(m - 1)(1 + 1/r)^2}, which is unbounded above — against the design shipped with this package,
 which has 31 degrees of freedom, it returns values in the thousands or \code{Inf}. Using that for a

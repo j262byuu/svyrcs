@@ -13,6 +13,28 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
     return(list(chisq = NA_real_, F = NA_real_, df1 = 0L, df2 = degf,
                 p_chisq = NA_real_, p_F = NA_real_, fmi = if (is.null(mi)) NULL else 0))
   }
+  ## Under imputation the joint test is D1, not a Wald statistic on the pooled covariance. The
+  ## statistic, its denominator degrees of freedom and the reported chi-square all come from there.
+  if (!is.null(mi)) {
+    d1 <- d1_test(beta, mi$Ubar, mi$B, mi$m, mi$degf)
+    if (is.null(d1)) {
+      warning("the ", what, " test is not computable: the within-imputation covariance block is ",
+              "singular, so the design cannot identify this model. Estimates are still shown, but ",
+              "their confidence intervals are not trustworthy.", call. = FALSE)
+      return(list(chisq = NA_real_, F = NA_real_, df1 = df1, df2 = degf,
+                  p_chisq = NA_real_, p_F = NA_real_, fmi = NA_real_))
+    }
+    return(list(
+      chisq = d1$F * df1,
+      F = d1$F,
+      df1 = df1,
+      df2 = d1$v,
+      p_chisq = stats::pchisq(d1$F * df1, df = df1, lower.tail = FALSE),
+      p_F = stats::pf(d1$F, df1 = df1, df2 = d1$v, lower.tail = FALSE),
+      fmi = d1$r / (1 + d1$r)
+    ))
+  }
+
   Vinv <- tryCatch(solve(V), error = function(e) NULL)
   if (is.null(Vinv)) {
     ## Warn rather than stop. Erroring here made svyrcs() refuse a fit that svyrcs_curve() would
@@ -29,28 +51,14 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
   chisq <- as.numeric(t(beta) %*% Vinv %*% beta)
   Fstat <- chisq / df1
 
-  ## Under imputation the statistic is unchanged -- it already uses the total covariance -- but the
-  ## reference distribution is not. The Li-Raghunathan-Rubin denominator df ignores the survey
-  ## design entirely (it gave 3457 against a 31-df design in testing), so apply the Barnard-Rubin
-  ## rule to the block instead, using the block's average relative increase in variance.
-  df2 <- degf
-  fmi <- NULL
-  if (!is.null(mi)) {
-    Ubinv <- tryCatch(solve(mi$Ubar), error = function(e) NULL)
-    r1 <- if (is.null(Ubinv)) 0 else (1 + 1 / mi$m) * sum(diag(mi$B %*% Ubinv)) / df1
-    r1 <- max(r1, 0)
-    fmi <- r1 / (1 + r1)
-    df2 <- barnard_rubin_df(u = 1, b = r1 / (1 + 1 / mi$m), m = mi$m, nu_com = mi$degf)
-  }
-
   list(
     chisq = chisq,
     F = Fstat,
     df1 = df1,
-    df2 = df2,
+    df2 = degf,
     p_chisq = stats::pchisq(chisq, df = df1, lower.tail = FALSE),
-    p_F = stats::pf(Fstat, df1 = df1, df2 = df2, lower.tail = FALSE),
-    fmi = fmi
+    p_F = stats::pf(Fstat, df1 = df1, df2 = degf, lower.tail = FALSE),
+    fmi = NULL
   )
 }
 

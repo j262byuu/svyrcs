@@ -46,9 +46,13 @@ test_that("the between-imputation variance is real when imputations differ", {
 test_that("Barnard-Rubin degrees of freedom behave", {
   nu <- 31
 
-  ## exact at zero between-imputation variance
-  expect_identical(barnard_rubin_df(u = 1, b = 0, m = 5, nu_com = nu), nu)
-  expect_identical(barnard_rubin_df(u = c(1, 2), b = c(0, 0), m = 5, nu_com = nu), c(nu, nu))
+  ## At zero between-imputation variance the published formula returns
+  ## (nu + 1) nu / (nu + 3), not nu: a known conservatism of the approximation. Earlier versions
+  ## short-circuited to nu here, which was a departure from the rule rather than an improvement.
+  vstar <- (nu + 1) / (nu + 3) * nu
+  expect_equal(barnard_rubin_df(u = 1, b = 0, m = 5, nu_com = nu), vstar)
+  expect_equal(barnard_rubin_df(u = c(1, 2), b = c(0, 0), m = 5, nu_com = nu), c(vstar, vstar))
+  expect_lt(vstar, nu)
 
   ## never above the complete-data df, and decreasing in b
   bs <- c(1e-8, 1e-4, 1e-2, 0.1, 1)
@@ -60,6 +64,14 @@ test_that("Barnard-Rubin degrees of freedom behave", {
   r <- (1 + 1 / 5) * bs / 1
   mitools_df <- (5 - 1) * (1 + 1 / r)^2
   expect_true(all(got < mitools_df))
+
+  ## the implementation is mice:::barnard.rubin, written differently
+  skip_if_not_installed("mice")
+  for (b in c(0, 1e-6, 0.05, 0.3, 0.7)) {
+    tot <- 1 + (1 + 1 / 5) * b
+    expect_equal(barnard_rubin_df(u = 1, b = b, m = 5, nu_com = nu),
+                 mice:::barnard.rubin(m = 5, b = b, t = tot, dfcom = nu), tolerance = 1e-10)
+  }
 })
 
 test_that("the pooled fit answers the model generics", {
