@@ -6,7 +6,7 @@
 ## without any environment tagging along.
 rewrite_rcs_call <- function(e, knots) {
   if (is.call(e)) {
-    if (identical(as.character(e[[1L]])[1L], "rcs")) {
+    if (is_call_to(e, "rcs")) {
       out <- e[1L:2L]
       out$knots <- knots
       return(out)
@@ -27,7 +27,7 @@ tidy_knots <- function(knots, digits = 7L) {
 ## Every rcs() call appearing anywhere in a formula.
 collect_rcs_calls <- function(e, acc = list()) {
   if (is.call(e)) {
-    if (identical(as.character(e[[1L]])[1L], "rcs")) return(c(acc, list(e)))
+    if (is_call_to(e, "rcs")) return(c(acc, list(e)))
     for (i in seq_along(e)[-1L]) acc <- collect_rcs_calls(e[[i]], acc)
   }
   acc
@@ -80,17 +80,22 @@ fit_one <- function(fit_formula, design, family, is_cox, ...) {
   }
 }
 
-## Detect a Surv() response, whether written bare or namespace-qualified as survival::Surv().
-is_surv_call <- function(e) {
+## Is `e` a call to the function `name`, however it is qualified? `rcs(x, 4)`,
+## `svyrcs::rcs(x, 4)` and `svyrcs:::rcs(x, 4)` all count, and likewise `Surv()` against
+## `survival::Surv()`. Matching only the bare name made a namespaced call invisible, and the
+## resulting error claimed the formula had no rcs() term when it plainly did.
+is_call_to <- function(e, name) {
   if (!is.call(e)) return(FALSE)
   fn <- e[[1L]]
-  nm <- if (is.call(fn) && identical(as.character(fn[[1L]])[1L], "::")) {
+  nm <- if (is.call(fn) && as.character(fn[[1L]])[1L] %in% c("::", ":::")) {
     as.character(fn[[3L]])
   } else {
     as.character(fn)[1L]
   }
-  identical(nm, "Surv")
+  identical(nm, name)
 }
+
+is_surv_call <- function(e) is_call_to(e, "Surv")
 
 #' Restricted cubic spline analysis of complex survey data
 #'
@@ -258,6 +263,13 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   }
 
   rcs_call <- rcs_calls[[1L]]
+  if (!is.symbol(rcs_call[[2L]])) {
+    stop_svyrcs("the exposure inside rcs() must be a bare variable name, but it is ",
+                dQuote(deparse1(rcs_call[[2L]]), FALSE), ". Transformations are not supported ",
+                "because the curve is reported on the exposure's own scale; add the transformed ",
+                "variable to the design first, for example ",
+                "design <- update(design, log_bmi = log(bmi)), then use rcs(log_bmi, 4).")
+  }
   var <- deparse1(rcs_call[[2L]])
   if (is.null(designs[[1L]]$variables[[var]])) {
     stop_svyrcs("the exposure '", var, "' is not a variable in `design`")
@@ -265,6 +277,30 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   knot_arg <- if (!is.null(rcs_call$knots)) rcs_call$knots else
     if (length(rcs_call) >= 3L) rcs_call[[3L]] else 4
   knot_spec <- eval(knot_arg, envir = designs[[1L]]$variables, enclos = environment(formula))
+
+  ## Everything below works on the analytic sample -- the rows the model is actually fitted on --
+  ## rather than the design as supplied. Deriving knots and the reference from the full design while
+  ## fitting on complete cases parameterises the spline on one population and estimates it on
+  ## another; with missingness related to the exposure the outer knot moved by nine BMI units in
+  ## testing. It also mis-calibrates the extrapolation check, which then compares against a range the
+  ## fit never saw.
+  ##
+  ## Under imputation every imputation shares one mask, the intersection of their complete cases.
+  ## Knots and coefficients have to mean the same thing in each imputation for Rubin's rules to
+  ## apply, and a per-imputation mask weakens that. Fitting on the subset rather than letting the
+  ## model drop rows leaves point estimates and standard errors unchanged -- survey's subsetting is
+  ## proper domain estimation -- and lowers the degrees of freedom only when a whole PSU contributes
+  ## no complete case, which is the honest answer in that situation.
+  model_vars <- intersect(all.vars(formula), names(designs[[1L]]$variables))
+  keeps <- lapply(designs, function(d) stats::complete.cases(d$variables[model_vars]))
+  keep <- Reduce(`&`, keeps)
+  n_design <- nrow(designs[[1L]]$variables)
+  if (!any(keep)) {
+    stop_svyrcs("no rows have complete data for every variable in the formula (",
+                paste(model_vars, collapse = ", "), "), so there is nothing to fit")
+  }
+  mask_cost <- if (imputed) max(vapply(keeps, sum, integer(1L))) - sum(keep) else 0L
+  designs <- lapply(designs, function(d) d[keep, ])
 
   ## Resolve the knots up front so they are fixed for fitting, prediction and plotting alike. Under
   ## imputation this is not a convenience but a requirement: if each imputation derived its own
@@ -334,13 +370,13 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   ## nobs() on a coxph object returns the number of *events* (its effective sample size for AIC),
   ## not the number of observations, so ask the model directly on the Cox path.
   n_used <- if (is_cox) as.integer(rep_fit$n) else as.integer(stats::nobs(rep_fit))
-  n_design <- nrow(designs[[1L]]$variables)
   nevents <- if (is_cox) as.integer(rep_fit$nevent) else NA_integer_
 
   imputation_info <- if (!imputed) NULL else {
     fmi <- curve$fmi
     list(
       m = model$m,
+      shared_mask_cost = mask_cost,
       degf_complete = degf,
       fmi_median = if (is.null(fmi)) NA_real_ else stats::median(fmi, na.rm = TRUE),
       fmi_range = if (is.null(fmi)) c(NA_real_, NA_real_) else range(fmi, na.rm = TRUE)

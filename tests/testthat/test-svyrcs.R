@@ -35,10 +35,14 @@ test_that("weighted knots differ from unweighted ones and both are reproducible"
   fw <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = design, weighted_knots = TRUE)
   fu <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = design, weighted_knots = FALSE)
 
+  ## Both are computed on the analytic sample -- the rows the model is fitted on -- not on the
+  ## design as supplied; `tchol` is missing for 649 of them.
+  keep <- stats::complete.cases(nhanes_bmi[c("tchol", "bmi", "age")])
+  analytic <- design[keep, ]
   expect_equal(fu$knots,
-               signif(unname(quantile(nhanes_bmi$bmi, c(0.05, 0.35, 0.65, 0.95))), 7))
+               signif(unname(quantile(nhanes_bmi$bmi[keep], c(0.05, 0.35, 0.65, 0.95))), 7))
   expect_equal(fw$knots,
-               signif(unname(coef(survey::svyquantile(~bmi, design, c(0.05, 0.35, 0.65, 0.95),
+               signif(unname(coef(survey::svyquantile(~bmi, analytic, c(0.05, 0.35, 0.65, 0.95),
                                                       na.rm = TRUE, ci = FALSE))), 7))
   expect_false(isTRUE(all.equal(fw$knots, fu$knots)))
   expect_true(fw$weighted_knots)

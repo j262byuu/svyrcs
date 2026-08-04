@@ -12,7 +12,7 @@ find_rcs_term <- function(fit, var = NULL) {
   hits <- list()
   for (i in seq_along(vars)[-1L]) {
     v <- vars[[i]]
-    if (!is.call(v) || !identical(as.character(v[[1L]]), "rcs")) next
+    if (!is_call_to(v, "rcs")) next
     pvi <- pv[[i]]
     knots <- tryCatch(eval(pvi$knots), error = function(e) NULL)
     if (is.null(knots) || length(knots) < 3L) {
