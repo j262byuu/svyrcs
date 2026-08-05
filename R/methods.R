@@ -66,6 +66,7 @@ fmt_test <- function(tt, label, width = 20L) {
     why <- switch(if (is.null(tt$reason) || is.na(tt$reason)) "linear" else tt$reason,
                   linear = "a linear term only",
                   singular = "the covariance block is singular",
+                  `invalid-df` = "the imputation correction gave an invalid denominator",
                   `non-finite` = "the covariance block is not finite",
                   "cause unknown")
     return(sprintf("  %-*s not estimable (%s)", width, label, why))

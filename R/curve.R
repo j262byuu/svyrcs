@@ -250,8 +250,13 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
   ## varied at the PSU level, and Inf gives the normal approximation. survey::regTermTest() takes a
   ## `df` argument for the same reason.
   degf <- resolve_df(df, degf)
-  if (!is.numeric(level) || length(level) != 1L || level <= 0 || level >= 1) {
-    stop_svyrcs("`level` must be a single number strictly between 0 and 1")
+  ## is.finite() rather than a bare comparison: `level = NA` (logical) was rejected because a logical
+  ## fails is.numeric(), but `NA_real_` and `NaN` passed that test and then reached `level <= 0`,
+  ## which returns NA and raises the base "missing value where TRUE/FALSE needed". The 0.6.2 test
+  ## pinned the logical case only.
+  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) || level <= 0 || level >= 1) {
+    stop_svyrcs("`level` must be a single finite number strictly between 0 and 1; got ",
+                format(level))
   }
 
   if (!is.null(range)) {
@@ -265,7 +270,23 @@ svyrcs_curve <- function(fit, var = NULL, ref = "median", ref_prob = 0.5, at = N
     range <- sort(range)
   }
   xvals <- exposure_values(fit, term$var, designs)
-  rng <- range %||% exposure_range(xvals, designs, term$var)
+  ## `at` is documented as making `range` ignored, and it did so for the grid but not for the
+  ## reference search: `at = c(20, 25, 30)` with `range = c(100, 200)` and `ref = "min"` returned a
+  ## grid of 20-30 anchored at 200. `range` is now refused alongside `at` rather than half-honoured,
+  ## because silently picking one of two conflicting instructions is worse than either.
+  if (!is.null(at) && !is.null(range)) {
+    stop_svyrcs("give either `at` or `range`, not both: `at` sets the evaluation points directly, ",
+                "and `range` would still steer the reference search, so the two conflict. Drop ",
+                "`range`, or use `range` with `n` instead of `at`.")
+  }
+  ## When `at` is given it defines the evaluation points, and a curve-derived reference has to be
+  ## searched over those points -- not over the default exposure range, which is what made
+  ## `at = c(20, 25, 30)` with `ref = "min"` anchor outside the requested values.
+  rng <- range %||% if (!is.null(at) && is.numeric(at) && length(at) && all(is.finite(at))) {
+    base::range(as.numeric(at))
+  } else {
+    exposure_range(xvals, designs, term$var)
+  }
   grid <- if (!is.null(at)) {
     if (!is.numeric(at) || !length(at)) stop_svyrcs("`at` must be a non-empty numeric vector")
     ## A non-finite `at` used to flow through and produce non-finite rows, which the convergence

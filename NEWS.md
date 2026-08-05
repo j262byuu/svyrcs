@@ -1,3 +1,73 @@
+# svyrcs 0.6.4
+
+A second independent audit, run as a three-round adversarial exchange rather than a single report.
+Six defects confirmed, one recorded open, two refuted, and one withdrawn after the auditor argued
+against its own finding. Every claim was reproduced locally before it was accepted.
+
+## Fixed
+
+* **A Cox model now fits on a replicate-weight design.** It never had. `survey`'s replicate Cox
+  method records `match.call()` and evaluates it later as `with(data, eval(g))`, so a formula passed
+  by variable name is out of scope by then: every such fit failed with `object 'fit_formula' not
+  found`. The formula is now inlined into the call as a literal expression, the same reason the knots
+  already were. The package advertised replicate designs and Cox models, and no test covered their
+  intersection.
+
+* **A knot count that cannot be placed is refused instead of silently shortened.**
+  `rcs_knots(1:9, 5)` returned **three** knots and `rcs_knots(1:3, 3)` returned **one**, because the
+  small-sample rule's outer replacements can collide with the interior knots and `unique()` then
+  shrinks the vector. The caller fitted a different spline than it asked for, with nothing in the
+  output to show it.
+
+* **A non-syntactic exposure name works.** `svyrcs(y ~ rcs(\`waist cm\`, 4), ...)` raised a base parse
+  error on the default path: both weighted helpers built their formula with `stats::reformulate()`,
+  which runs `str2lang()` on the bare label. `survey` handles such names fine.
+
+* **`level = NA_real_` and `NaN` raise a typed error.** The 0.6.2 test pinned `level = NA`, which is
+  *logical* and fails `is.numeric()`; the numeric variants took a different branch and reached the
+  base "missing value where TRUE/FALSE needed".
+
+* **`at` and `range` are no longer both accepted.** `at` was documented as making `range` ignored,
+  and it was — for the evaluation grid but not for the reference search, so
+  `at = c(20, 25, 30)` with `range = c(100, 200)` and `ref = "min"` returned a grid of 20–30 anchored
+  at 200. A curve-derived reference is now searched over `at` itself.
+
+* **An imputation test with an invalid denominator is reported, not turned into `NaN`.** Reiter's
+  small-sample expansion returns a *negative* degrees of freedom once the between-imputation variance
+  dominates — `v` crosses zero around a fraction of missing information of 0.893 — after which `pf()`
+  gave `NaN` with only base R's "NaNs produced" to show for it. The test is now unavailable with its
+  own reason. It is refused rather than capped, because capping would invent a number the reference
+  distribution does not support.
+
+## Corrected claim
+
+* **0.6.2 said the default knot placement matches `rms` below n = 100. It does not.** That was
+  verified through `rcs_knots()`, which is the *unweighted* path; the default `weighted_knots = TRUE`
+  passes weighted quantiles as explicit knots, so Harrell's small-sample rule never runs. At n = 60
+  with equal weights the two paths disagree where they must agree.
+
+  Harrell's rule is defined on order statistics of an unweighted sample and has no published weighted
+  equivalent, so the default path now **warns** and points at `weighted_knots = FALSE`, rather than
+  diverging quietly. Applying a weighted analogue would move knots, coefficients, references, curves
+  and tests for every weighted fit below n = 100; that is a separate, announced decision.
+
+## Not defects
+
+* **A curve-derived `"min"`/`"max"` reference outside the observed range.** Flagged as certain by the
+  auditor and withdrawn after it argued against itself: the user has explicitly asked for an
+  extrapolating `range`, the curve warns that every grid value is outside the observed data, and the
+  reference is labelled "at the range boundary". The default range never leaves the observed data.
+
+* **Non-finite `v` from D1/Reiter**, and **untyped character knots** — neither reproduced.
+
+## Reachability recorded, not asserted
+
+The negative Reiter denominator is real in arithmetic but was **not reached from a proper
+imputation**: constructions at 90–97% missingness with auxiliary R² from 0.60 down to 0.05, at
+m ∈ {5, 20, 50}, topped out at a fraction of missing information of 0.64. Asked directly to close it,
+the auditor declined to promote an unverified pathological construction. The guard ships anyway,
+because the failure mode is silent.
+
 # svyrcs 0.6.3
 
 Three numerical concerns raised by the 0.6.0 review were left open because they had never been

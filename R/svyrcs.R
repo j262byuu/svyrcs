@@ -74,7 +74,17 @@ assemble_tests <- function(beta, V, term, modifier, degf, mi = NULL) {
 ## cannot drift apart.
 fit_one <- function(fit_formula, design, family, is_cox, ...) {
   if (is_cox) {
-    survey::svycoxph(fit_formula, design = design, ...)
+    ## `survey:::svycoxph.svyrep.design` records `g <- match.call()` and later evaluates it as
+    ## `with(data, eval(g))`, so the recorded call has to be self-contained syntax. Passing the
+    ## formula by variable name records `svycoxph(fit_formula, ...)`, and by the time `g` is
+    ## evaluated that local is out of scope: every Cox fit on a replicate design failed with
+    ## "object 'fit_formula' not found". Inlining the formula as a literal expression is the same
+    ## reason the knots are inlined a few lines above -- the fitted object has to stand on its own.
+    ## `design` stays a symbol deliberately: it resolves against svycoxph's own formal.
+    cl <- as.call(c(list(quote(survey::svycoxph), str2lang(deparse1(fit_formula)),
+                         design = quote(design)),
+                    list(...)))
+    eval(cl)
   } else {
     survey::svyglm(fit_formula, design = design, family = family %||% stats::gaussian(), ...)
   }
@@ -121,6 +131,12 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #'   survey-weighted quantiles of the exposure, so knot placement reflects the population rather than
 #'   the unweighted sample. Set to `FALSE` for unweighted quantiles. Explicit knot locations are
 #'   always used as given.
+#'
+#'   Below 100 analytic observations the two differ in kind, not just in weighting. Harrell's rule
+#'   puts the outer knots at the fifth smallest and fifth largest *values*, which is defined on an
+#'   unweighted sample and has no published weighted equivalent, so `weighted_knots = TRUE` uses the
+#'   plain weighted 5th and 95th percentiles instead and warns. `weighted_knots = FALSE` applies the
+#'   rule and reproduces `rms::rcs()` exactly.
 #' @param n Number of points on the estimated curve.
 #' @param range Length-2 numeric giving the exposure range to estimate over. Defaults to the 1st and
 #'   99th survey-weighted percentiles.
@@ -372,6 +388,26 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
     nk <- as.integer(round(knot_spec))
     probs <- harrell_knot_probs(nk)
     kn <- unname(pooled_weighted_quantile(var, designs, probs))
+    ## Harrell's small-sample rule -- outer knots at the fifth smallest and fifth largest values --
+    ## is defined on order statistics of an unweighted sample and has no published weighted
+    ## equivalent, so this path does not apply it. 0.6.2 said the default placement matches `rms`
+    ## below n = 100; that was verified through rcs_knots(), which is this path's *unweighted*
+    ## alternative, so the claim held for `weighted_knots = FALSE` and not for the default. Say so
+    ## rather than quietly diverging.
+    ## The threshold is the number of analytic observations, matching small_sample_outer_knots().
+    ## Two things that are not it: the number of *distinct* values -- an integer age has about 60 of
+    ## them in any sample size -- and the concatenated m*n under imputation, which counts every
+    ## imputation separately. Both were wrong in the first draft of this guard.
+    n_analytic <- sum(!is.na(as.numeric(designs[[1L]]$variables[[var]])))
+    if (n_analytic < 100L) {
+      warning("'", var, "' has ", n_analytic, " analytic observations, and below 100 Harrell places ",
+              "the outer ",
+              "knots at the fifth smallest and fifth largest values for stability. That rule is ",
+              "defined on an unweighted sample and is not applied to survey-weighted quantiles, so ",
+              "these knots are the plain weighted 5th and 95th percentiles. Pass ",
+              "`weighted_knots = FALSE` for the unweighted rule, or supply explicit knots.",
+              call. = FALSE)
+    }
     ## Check here rather than letting rcs_knots() deduplicate: by the time the collapsed vector
     ## reaches it, the count the user actually asked for is gone and the message would report the
     ## number of survivors instead of the real problem.

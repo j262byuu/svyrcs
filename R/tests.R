@@ -33,6 +33,15 @@ wald_block <- function(beta, V, degf, what, mi = NULL) {
   ## statistic, its denominator degrees of freedom and the reported chi-square all come from there.
   if (!is.null(mi)) {
     d1 <- d1_test(beta, mi$Ubar, mi$B, mi$m, mi$degf)
+    if (inherits(d1, "svyrcs_invalid_df")) {
+      warning("the ", what, " test is not computable: the small-sample correction returned a ",
+              "denominator of ", format(d1$v, digits = 4), " degrees of freedom, which is not a ",
+              "valid reference distribution. This happens when the between-imputation variance ",
+              "dominates the within-imputation variance -- a fraction of missing information above ",
+              "roughly 0.89. Estimates are still shown; this joint test is not.", call. = FALSE)
+      return(list(chisq = NA_real_, F = NA_real_, df1 = df1, df2 = NA_real_,
+                  p_chisq = NA_real_, p_F = NA_real_, fmi = NA_real_, reason = "invalid-df"))
+    }
     if (is.null(d1)) {
       warning("the ", what, " test is not computable: the within-imputation covariance block is ",
               "singular, so the design cannot identify this model. Estimates are still shown, but ",

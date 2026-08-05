@@ -77,15 +77,22 @@ design <- survey::svydesign(
   id = ~psu, strata = ~strata, weights = ~weight,
   nest = TRUE, data = nhanes_bmi
 )
-fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+# n = 50 rather than the default 200: the example draws the same curve and keeps well inside
+# CRAN's five-second budget for a single example.
+fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design, n = 50)
 
 # works with or without ggplot2 installed
 plot(fit)
+
+\donttest{
+# the base fallback, and modifying the ggplot2 version. Both are cheap on their own; together
+# with the fit above they push this one example past CRAN's five-second CPU budget, which is a
+# limit per example rather than per file.
 plot(fit, backend = "base", title = TRUE)
 
-# modifying the plot needs ggplot2
 if (requireNamespace("ggplot2", quietly = TRUE)) {
   plot(fit, title = TRUE) + ggplot2::labs(x = "Body mass index (kg/m2)")
+}
 }
 
 }
