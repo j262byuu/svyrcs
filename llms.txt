@@ -106,8 +106,9 @@ fixed several things that are easy to get wrong when doing this by hand:
 
 ## Dependencies
 
-`Imports` is `survey`, `rlang` and `stats` — 11 packages including their
-own dependencies.
+`Imports` is `survey`, `rlang` and `stats` — 11 packages to install,
+counting their own recursive dependencies and excluding the base
+packages that ship with R.
 
 `ggplot2` is suggested, not required.
 [`plot()`](https://rdrr.io/r/graphics/plot.default.html) uses it when it
