@@ -86,13 +86,24 @@ is_count <- function(x, tol = .Machine$double.eps^0.5) {
   is.numeric(x) && length(x) == 1L && !is.na(x) && abs(x - round(x)) < tol
 }
 
+## `~var` for a variable name, including one that is not syntactic.
+##
+## stats::reformulate() runs str2lang() on the bare label, so a column named "waist cm" was a parse
+## error -- on the default path, since both weighted helpers below go through here. Building the
+## call from a name instead of from text sidesteps the parser entirely.
+one_sided <- function(var) {
+  f <- stats::as.formula(call("~", as.name(var)))
+  environment(f) <- parent.frame()
+  f
+}
+
 ## Design-weighted quantiles of a single variable.
 ##
 ## survey::svyquantile()'s return shape has changed across versions and also depends on `ci`: with
 ## ci = FALSE it is a 1 x nq matrix, with ci = TRUE an nq x 4 one, and older survey returned a bare
 ## numeric. coef() normalises all of them to the estimates alone.
 weighted_quantile <- function(var, design, probs) {
-  f <- stats::reformulate(var)
+  f <- one_sided(var)
   q <- survey::svyquantile(f, design, quantiles = probs, na.rm = TRUE, ci = FALSE)
   out <- as.numeric(stats::coef(q))
   if (length(out) != length(probs) || anyNA(out)) {
@@ -103,7 +114,7 @@ weighted_quantile <- function(var, design, probs) {
 }
 
 weighted_mean <- function(var, design) {
-  m <- survey::svymean(stats::reformulate(var), design, na.rm = TRUE)
+  m <- survey::svymean(one_sided(var), design, na.rm = TRUE)
   as.numeric(m)[1L]
 }
 

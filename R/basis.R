@@ -54,7 +54,7 @@ rcs_knots <- function(x, knots = 4, var = "x") {
                   "', but it has ", length(unique(xo)))
     }
     kn <- unname(stats::quantile(xo, harrell_knot_probs(nk), na.rm = TRUE, names = FALSE))
-    kn <- small_sample_outer_knots(kn, xo)
+    kn <- small_sample_outer_knots(kn, xo, var = var)
   } else {
     if (!is.numeric(knots) || !all(is.finite(knots))) {
       stop_svyrcs("`knots` must be a numeric vector of finite values; got ",
@@ -122,12 +122,35 @@ warn_if_knots_crowded <- function(kn, var, tol = 1e-6) {
 ## At very small n the replacements can fall inside the interior knots -- for `1:10` the result sorts
 ## to 4.15, 5, 6, 6.85. `Hmisc` behaves the same way, and diverging here would reintroduce exactly
 ## the sort of private rule this change exists to remove.
-small_sample_outer_knots <- function(kn, xo) {
+small_sample_outer_knots <- function(kn, xo, var = "x") {
   if (length(xo) >= 100L) return(kn)
+  nk <- length(kn)
+  ## The rule indexes the 5th and (n-4)th order statistics, so it needs at least 5 observations.
+  ## Before 0.6.4 `xs[5L]` on a shorter vector gave NA or a zero-length replacement, and the caller
+  ## got malformed knots or a base error about replacement length.
+  ##
+  ## Not 9: at n = 8 the two indices cross (5 and 4), but `sort()` puts them back in order and the
+  ## result is still four distinct knots matching Hmisc. A guard set by when the indices look tidy
+  ## rather than by when they are defined would reject placements that work.
   xs <- sort(xo)
+  if (length(xs) < 5L) {
+    stop_svyrcs("placing ", nk, " knots by Harrell's small-sample rule needs at least 5 ",
+                "observations of '", var, "', but there are ", length(xs),
+                ". Supply explicit knot locations, or use more data.")
+  }
   kn[1L] <- xs[5L]
-  kn[length(kn)] <- xs[length(xs) - 4L]
-  sort(unique(kn))
+  kn[nk] <- xs[length(xs) - 4L]
+  out <- sort(unique(kn))
+  ## The replacements can collide with an interior knot, and `unique()` then silently shortens the
+  ## vector: `rcs_knots(1:9, 5)` used to return three knots, so the caller fitted a different spline
+  ## than it asked for with nothing to show it.
+  if (length(out) != nk) {
+    stop_svyrcs("could not place ", nk, " distinct knots for '", var, "': below 100 observations ",
+                "the outer knots move to the fifth smallest and fifth largest values, and here ",
+                "they coincide with the interior knots, leaving ", length(out),
+                ". Use fewer knots, or supply explicit knot locations.")
+  }
+  out
 }
 
 ## The numerical core: Harrell's truncated power basis, normalised by (t_k - t_1)^2.
@@ -156,7 +179,8 @@ rcs_design_matrix <- function(x, knots) {
 #'
 #' Builds a restricted cubic spline (natural spline) basis for use inside a model formula. The basis
 #' is Harrell's truncated power parameterisation and matches `rms::rcs()` -- both the basis and, since
-#' 0.6.2, the default knot placement, including the small-sample rule that moves the outer knots to
+#' 0.6.2, the knot placement this function performs, including the small-sample rule that moves the
+#' outer knots to
 #' the fifth smallest and fifth largest values below 100 observations. Unlike `rms`, it stores its
 #' knots on the returned object and registers a [stats::makepredictcall()] method, so a model fitted
 #' with `rcs()` reuses exactly the same knots when predicting on new data.

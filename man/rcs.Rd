@@ -20,7 +20,8 @@ attributes \code{knots} and \code{nk}.
 \description{
 Builds a restricted cubic spline (natural spline) basis for use inside a model formula. The basis
 is Harrell's truncated power parameterisation and matches \code{rms::rcs()} -- both the basis and, since
-0.6.2, the default knot placement, including the small-sample rule that moves the outer knots to
+0.6.2, the knot placement this function performs, including the small-sample rule that moves the
+outer knots to
 the fifth smallest and fifth largest values below 100 observations. Unlike \code{rms}, it stores its
 knots on the returned object and registers a \code{\link[stats:makepredictcall]{stats::makepredictcall()}} method, so a model fitted
 with \code{rcs()} reuses exactly the same knots when predicting on new data.

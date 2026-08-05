@@ -88,3 +88,13 @@ nan_vcov_design <- function(frac = 0.4, seed = 4) {
                       weights = stats::weights(jk, "sampling"), type = "other",
                       scale = jk$scale, rscales = rs, mse = TRUE, combined.weights = FALSE)
 }
+
+## A genuine replicate-weight design. The suite exercised these for the first time in 0.6.3, and the
+## Cox path on one was broken until 0.6.4.
+rep_design <- local({
+  cached <- NULL
+  function() {
+    if (is.null(cached)) cached <<- survey::as.svrepdesign(nhanes_design(), type = "JKn")
+    cached
+  }
+})

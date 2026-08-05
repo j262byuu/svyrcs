@@ -213,6 +213,18 @@ d1_test <- function(Qbar, Ubar, B, m, dfcom) {
     t * (1 + 1 / k) * (1 + 1 / r)^2 / 2
   }
 
+  ## Reiter's expansion is an approximation, and outside its useful domain it returns a negative
+  ## denominator: `v` crosses zero at a fraction of missing information around 0.893, after which
+  ## pf() yields NaN and the only signal is base R's "NaNs produced". The implementation matches
+  ## mitml:::.D1 line for line, so this is the approximation failing rather than a transcription
+  ## error -- but a p-value computed from a negative denominator is not a p-value.
+  ##
+  ## Refuse it rather than capping. Capping would invent a number the reference distribution does not
+  ## support; an unavailable test is honest. No construction reached this from a proper imputation --
+  ## 90-97% missingness with a weak auxiliary topped out at FMI 0.64 -- so this is a guard on an
+  ## arithmetic possibility, not on a demonstrated scenario.
+  if (!is.finite(v) || v <= 0) return(structure(list(v = v), class = "svyrcs_invalid_df"))
+
   list(F = stat, k = k, v = v, r = r)
 }
 

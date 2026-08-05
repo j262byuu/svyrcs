@@ -41,7 +41,13 @@ A multiply imputed design, built by passing a \code{mitools::imputationList()} t
 \item{weighted_knots}{If \code{TRUE} (default), a knot \emph{count} is turned into knot locations using
 survey-weighted quantiles of the exposure, so knot placement reflects the population rather than
 the unweighted sample. Set to \code{FALSE} for unweighted quantiles. Explicit knot locations are
-always used as given.}
+always used as given.
+
+Below 100 analytic observations the two differ in kind, not just in weighting. Harrell's rule
+puts the outer knots at the fifth smallest and fifth largest \emph{values}, which is defined on an
+unweighted sample and has no published weighted equivalent, so \code{weighted_knots = TRUE} uses the
+plain weighted 5th and 95th percentiles instead and warns. \code{weighted_knots = FALSE} applies the
+rule and reproduces \code{rms::rcs()} exactly.}
 
 \item{n}{Number of points on the estimated curve.}
 
