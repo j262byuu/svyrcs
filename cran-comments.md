@@ -2,7 +2,7 @@
 
 ## Submission
 
-svyrcs 0.6.1 — new submission.
+svyrcs 0.6.4 — new submission.
 
 The package fits restricted cubic splines inside `survey` models, so that exposure-response curves
 for complex survey data (NHANES and similar) are estimated with sampling weights and design-based
@@ -15,36 +15,37 @@ Checked with `--as-cran` on:
 
 | Platform | R |
 |---|---|
-| macOS 15, aarch64-apple-darwin23 (GitHub Actions) | 4.6.1 |
-| Windows Server 2022, x86_64-w64-mingw32 (GitHub Actions) | 4.6.1 |
-| Ubuntu 24.04, x86_64-pc-linux-gnu (GitHub Actions) | 4.6.1 |
-| Ubuntu 24.04, x86_64-pc-linux-gnu (GitHub Actions) | R-devel (2026-06-21 r90185) |
-| Ubuntu 24.04, x86_64-pc-linux-gnu (GitHub Actions) | 4.5.3 |
-| Ubuntu 24.04, x86_64-pc-linux-gnu, hard dependencies only (GitHub Actions) | 4.6.1 |
+| macOS Tahoe 26.5.2, aarch64-apple-darwin23 (GitHub Actions) | 4.6.1 (2026-06-24) |
+| Windows Server 2025, x86_64-w64-mingw32 (GitHub Actions) | 4.6.1 (2026-06-24 ucrt) |
+| Ubuntu 24.04.4 LTS, x86_64-pc-linux-gnu (GitHub Actions) | 4.6.1 (2026-06-24) |
+| Ubuntu 24.04.4 LTS, x86_64-pc-linux-gnu (GitHub Actions) | R-devel (2026-06-21 r90185) |
+| Ubuntu 24.04.4 LTS, x86_64-pc-linux-gnu (GitHub Actions) | 4.5.3 (2026-03-11) |
+| Ubuntu 24.04.4 LTS, x86_64-pc-linux-gnu, hard dependencies only (GitHub Actions) | 4.6.1 (2026-06-24) |
 | Windows 11, x86_64-w64-mingw32 (local) | 4.5.2 |
+
+All six GitHub Actions jobs reported `Status: OK`.
 
 The hard-dependencies-only run installs nothing from `Suggests` beyond what the test suite itself
 needs, and asserts that ggplot2 is absent before checking, so the base graphics fallback is
-exercised rather than assumed. It reported `Status: OK` with 570 tests passing and 15 skipped.
+exercised rather than assumed. It reported `Status: OK` with 849 tests passing and 19 skipped; the
+other five jobs ran the full suite of 1037 tests with nothing skipped.
+
+One job additionally installs TinyTeX and HTML Tidy and drops `--no-manual`, so both the PDF and the
+HTML manual are built and checked. A post-check step asserts that those two lines are present and
+passing, since a skipped check and a passing check are otherwise indistinguishable from the job's
+exit status.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 1 note on the CI platforms:
 
 * checking CRAN incoming feasibility ... NOTE
   Maintainer: 'Xiaoyu Zong <j262byuu@gmail.com>'
   New submission
 
-All six GitHub Actions platforms reported `Status: OK` with no notes at all. The local run reports
-one additional note, `Files 'README.md' or 'NEWS.md' cannot be checked without 'pandoc' being
-installed`, which is an artefact of that machine: both files were verified separately with pandoc
-and convert cleanly.
-
-The local run also uses `--no-manual`, since no LaTeX is installed there. The manual builds on the
-GitHub Actions platforms.
-
-A third note may appear locally, `checking for future file timestamps ... unable to verify current
-time`, when the machine cannot reach a time server. It is transient and environmental.
+The local run reports one further note, `checking for future file timestamps ... unable to verify
+current time`, which appears when the machine cannot reach a time server. It is transient and
+environmental.
 
 ## Shipped data
 
@@ -60,18 +61,21 @@ design being valid.
 
 ## Examples and tests
 
-Examples run in well under 5 seconds each. Three survival examples, which fit survey-weighted Cox
-models, are wrapped in `\donttest{}` to keep the total example time low; they run cleanly under
-`--run-donttest`, which was included in every check above.
+Each example runs in under 5 seconds. Three survival examples, which fit survey-weighted Cox models,
+are wrapped in `\donttest{}`, as are the secondary plotting calls in `?plot.svyrcs` — the base
+graphics fallback and the ggplot2 modification. All of them run cleanly under `--run-donttest`, which
+was included in every check above.
 
-The test suite is 808 tests and takes about 60 seconds. Tests that need a `Suggests` package are
+The test suite is 1037 tests and takes about three minutes. Tests that need a `Suggests` package are
 guarded with `skip_if_not_installed()`.
 
 ## Dependencies
 
-`Imports` is limited to `rlang`, `stats` and `survey` — 11 packages including their recursive
-dependencies. `ggplot2`, `survival`, `rms`, `mitools`, `mice`, `haven`, `knitr`, `rmarkdown` and
-`testthat` are in `Suggests` and are used only where guarded.
+`Imports` is limited to `rlang`, `stats` and `survey (>= 4.0)` — 11 packages to install, counting
+their recursive dependencies and excluding the base packages that ship with R (18 including them).
+
+`ggplot2`, `haven`, `Hmisc`, `knitr`, `mice`, `mitml`, `mitools`,
+`rmarkdown`, `rms`, `survival` and `testthat` are in `Suggests` and are used only where guarded.
 
 `ggplot2` is suggested rather than imported even though plotting is a headline feature: `plot()`
 falls back to an equivalent base graphics implementation when ggplot2 is absent, so nothing is lost.
@@ -82,17 +86,19 @@ A dedicated continuous integration job installs only the hard dependencies plus 
 itself needs, and asserts that ggplot2 really is absent before running, so the base graphics fallback
 is exercised in a real environment rather than only under mocking.
 
-The package deliberately does not depend on `rms`, even though it implements the same spline basis:
-the two agree to about 1e-14, and avoiding the dependency also avoids `rms`'s `datadist` global
-option.
+`Hmisc` and `rms` are suggested purely so that the test suite can check this package's spline basis
+and knot placement against Harrell's reference implementation; neither is used at run time. The
+package deliberately does not depend on `rms`, even though it implements the same spline basis: the
+two agree to about 1e-14, and avoiding the dependency also avoids `rms`'s `datadist` global option.
 
 ## Note on masking
 
 The package exports a function named `rcs()`, which masks `rms::rcs()` when both packages are
 attached. This is intentional and documented in `?rcs` and in the package-level help. The two produce
-numerically identical bases, so the masking cannot change a result; `svyrcs::rcs()` additionally
-stores its knots on the returned object and registers a `makepredictcall()` method, which is what
-makes prediction on new data safe.
+numerically identical bases given the same knots, and `rcs_knots()` reproduces
+`Hmisc::rcspline.eval()`'s default placement exactly, so the masking cannot change a result.
+`svyrcs::rcs()` additionally stores its knots on the returned object and registers a
+`makepredictcall()` method, which is what makes prediction on new data safe.
 
 ## Downstream dependencies
 

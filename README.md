@@ -101,7 +101,8 @@ easy to get wrong when doing this by hand:
 
 ## Dependencies
 
-`Imports` is `survey`, `rlang` and `stats` — 11 packages including their own dependencies.
+`Imports` is `survey`, `rlang` and `stats` — 11 packages to install, counting their own
+recursive dependencies and excluding the base packages that ship with R.
 
 `ggplot2` is suggested, not required. `plot()` uses it when it is installed and falls back to an
 equivalent base graphics plot when it is not, so nothing is lost by leaving it out. `autoplot()`,

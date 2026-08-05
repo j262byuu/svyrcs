@@ -3,8 +3,13 @@
 if (!exists("meta") || is.null(meta)) {
   meta <- utils::packageDescription("svyrcs")
 }
+## No hard-coded fallback. This used to read "0.3.0", which stayed put through six releases and
+## would have printed a five-versions-stale citation had the lookup ever failed. Omitting the
+## version is honest; naming the wrong one is not.
 version <- meta$Version
-if (is.null(version) || is.na(version)) version <- "0.3.0"
+has_version <- !is.null(version) && !is.na(version) && nzchar(version)
+note <- if (has_version) paste("R package version", version) else "R package"
+version_text <- if (has_version) paste0(" R package version ", version, ".") else ""
 
 citHeader(
   "To cite svyrcs in publications, please cite the package. If the analysis relies on the ",
@@ -17,11 +22,11 @@ bibentry(
   title    = "{svyrcs}: Restricted Cubic Splines for Complex Survey Data",
   author   = person("Xiaoyu", "Zong"),
   year     = "2026",
-  note     = paste("R package version", version),
+  note     = note,
   url      = "https://github.com/j262byuu/svyrcs",
   textVersion = paste0(
-    "Zong X (2026). svyrcs: Restricted Cubic Splines for Complex Survey Data. ",
-    "R package version ", version, ". https://github.com/j262byuu/svyrcs"
+    "Zong X (2026). svyrcs: Restricted Cubic Splines for Complex Survey Data.",
+    version_text, " https://github.com/j262byuu/svyrcs"
   )
 )
 
