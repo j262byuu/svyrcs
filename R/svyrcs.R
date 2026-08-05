@@ -1,4 +1,4 @@
-## Walk a formula's language tree and rewrite the rcs() call so it carries `knots` literally.
+## Walk a formula's language tree and rewrite the rcspline() call so it carries `knots` literally.
 ##
 ## The knots have to be inlined rather than referred to through a symbol: survey::svycoxph() and
 ## survey::svyglm() both reject a formula whose all.vars() are not all columns of the design. Inlining
@@ -6,7 +6,7 @@
 ## without any environment tagging along.
 rewrite_rcs_call <- function(e, knots) {
   if (is.call(e)) {
-    if (is_call_to(e, "rcs")) {
+    if (is_call_to(e, "rcspline")) {
       out <- e[1L:2L]
       out$knots <- knots
       return(out)
@@ -24,10 +24,28 @@ tidy_knots <- function(knots, digits = 7L) {
   if (anyDuplicated(out) || length(unique(out)) < length(knots)) knots else out
 }
 
-## Every rcs() call appearing anywhere in a formula.
+## A formula that still says `rcs(...)`.
+##
+## Until 0.7.0 this package exported `rcs()`, which masked `rms::rcs()` whenever both were attached.
+## The name is gone, so a formula written the old way now resolves to whatever `rcs` is on the search
+## path -- `rms::rcs()` if rms is attached, and nothing at all otherwise. Neither produces a usable
+## svyrcs term, and the failure it would otherwise cause ("no rcspline() term found") points at the
+## wrong thing.
+stop_if_bare_rcs <- function(e) {
+  if (is_call_to(e, "rcs")) {
+    stop_svyrcs("this formula uses `rcs()`, which svyrcs no longer exports -- it is now ",
+                "`rcspline()`. Left as it is, `rcs()` resolves to `rms::rcs()` when rms is attached, ",
+                "whose basis this package cannot read knots back from. Write ",
+                "`rcspline(", deparse1(e[[2L]]), ", ...)` instead.")
+  }
+  if (is.call(e)) for (i in seq_along(e)[-1L]) stop_if_bare_rcs(e[[i]])
+  invisible(NULL)
+}
+
+## Every rcspline() call appearing anywhere in a formula.
 collect_rcs_calls <- function(e, acc = list()) {
   if (is.call(e)) {
-    if (is_call_to(e, "rcs")) return(c(acc, list(e)))
+    if (is_call_to(e, "rcspline")) return(c(acc, list(e)))
     for (i in seq_along(e)[-1L]) acc <- collect_rcs_calls(e[[i]], acc)
   }
   acc
@@ -90,10 +108,10 @@ fit_one <- function(fit_formula, design, family, is_cox, ...) {
   }
 }
 
-## Is `e` a call to the function `name`, however it is qualified? `rcs(x, 4)`,
-## `svyrcs::rcs(x, 4)` and `svyrcs:::rcs(x, 4)` all count, and likewise `Surv()` against
+## Is `e` a call to the function `name`, however it is qualified? `rcspline(x, 4)`,
+## `svyrcs::rcspline(x, 4)` and `svyrcs:::rcspline(x, 4)` all count, and likewise `Surv()` against
 ## `survival::Surv()`. Matching only the bare name made a namespaced call invisible, and the
-## resulting error claimed the formula had no rcs() term when it plainly did.
+## resulting error claimed the formula had no rcspline() term when it plainly did.
 is_call_to <- function(e, name) {
   if (!is.call(e)) return(FALSE)
   fn <- e[[1L]]
@@ -113,9 +131,9 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #' exposure-response curve, its confidence band, tests of overall association and of non-linearity,
 #' and the reference value the curve is anchored to.
 #'
-#' @param formula A model formula containing exactly one [rcs()] term for the exposure, plus any
+#' @param formula A model formula containing exactly one [rcspline()] term for the exposure, plus any
 #'   covariates. A `Surv()` response selects a survey-weighted Cox model; anything else is fitted
-#'   with [survey::svyglm()]. Crossing the spline with a grouping variable, `rcs(x, 4) * sex`,
+#'   with [survey::svyglm()]. Crossing the spline with a grouping variable, `rcspline(x, 4) * sex`,
 #'   estimates one curve per group and tests whether they differ; see the section below.
 #' @param design A survey design object, as built by [survey::svydesign()]. Subset it with
 #'   [subset()] before passing it in; the degrees of freedom are taken from the design you pass.
@@ -164,10 +182,10 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #'   }
 #'
 #' @section Subgroups and effect modification:
-#' Writing the exposure crossed with a grouping variable, `rcs(bmi, 4) * sex`, fits **one** model and
+#' Writing the exposure crossed with a grouping variable, `rcspline(bmi, 4) * sex`, fits **one** model and
 #' returns one curve per level of the modifier. Because it is a single model, the covariate effects
 #' are shared across groups and a genuine interaction test is available; fitting each subgroup
-#' separately gives neither. `sex * rcs(bmi, 4)` is equivalent.
+#' separately gives neither. `sex * rcspline(bmi, 4)` is equivalent.
 #'
 #' The modifier must be a factor, character or logical variable; ordered factors and other contrast
 #' codings are handled, because group curves are built from the contrast matrix rather than from
@@ -256,7 +274,7 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #' band uses the variance estimator the design implies -- Taylor linearisation for an ordinary
 #' design, replicate-weight variance for a replicate design.
 #'
-#' @seealso [svyrcs_curve()] for curves from a model you fitted yourself, [rcs()] for the basis,
+#' @seealso [svyrcs_curve()] for curves from a model you fitted yourself, [rcspline()] for the basis,
 #'   [references] for reference values.
 #'
 #' @examples
@@ -266,23 +284,23 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 #' )
 #'
 #' # continuous outcome: mean difference in total cholesterol across the BMI range
-#' fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+#' fit <- svyrcs(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 #' fit
 #'
 #' # survival outcome: all-cause mortality, anchored at the minimum-risk BMI
 #' \donttest{
 #' library(survival)
-#' fit_hr <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex,
+#' fit_hr <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) + age + sex,
 #'                  design = design, ref = "min")
 #' summary(fit_hr)
 #' plot(fit_hr)
 #'
 #' # binary outcome: odds of high total cholesterol
-#' fit_or <- svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
+#' fit_or <- svyrcs(high_chol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design,
 #'                  family = quasibinomial())
 #'
 #' # one curve per subgroup, with a test of whether they differ
-#' fit_by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+#' fit_by_sex <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) * sex + age, design = design)
 #' fit_by_sex$tests$interaction$p_F
 #' plot(fit_by_sex)
 #' }
@@ -291,6 +309,7 @@ is_surv_call <- function(e) is_call_to(e, "Surv")
 svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.5,
                    weighted_knots = TRUE, n = 200, range = NULL, level = 0.95, df = NULL, ...) {
   cl <- match.call()
+  stop_if_bare_rcs(formula)
 
   if (!inherits(design, c("survey.design", "svyrep.design")) && !is_mi_design(design)) {
     stop_svyrcs("`design` must be a survey design object from survey::svydesign() or ",
@@ -303,7 +322,7 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
   imputed <- is_mi_design(design)
   if (!inherits(formula, "formula") || length(formula) != 3L) {
     stop_svyrcs("`formula` must be a two-sided model formula, such as ",
-                "outcome ~ rcs(bmi, 4) + age")
+                "outcome ~ rcspline(bmi, 4) + age")
   }
 
   ## `subset` would be applied by the fitting function after knots and the reference were already
@@ -317,22 +336,22 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
 
   rcs_calls <- collect_rcs_calls(formula[[3L]])
   if (length(rcs_calls) == 0L) {
-    stop_svyrcs("`formula` must contain an rcs() term for the exposure, for example ",
-                "outcome ~ rcs(bmi, 4) + age")
+    stop_svyrcs("`formula` must contain an rcspline() term for the exposure, for example ",
+                "outcome ~ rcspline(bmi, 4) + age")
   }
   if (length(rcs_calls) > 1L) {
-    stop_svyrcs("`formula` contains ", length(rcs_calls), " rcs() terms; svyrcs models one ",
+    stop_svyrcs("`formula` contains ", length(rcs_calls), " rcspline() terms; svyrcs models one ",
                 "exposure at a time. Fit separate models, or use svyrcs_curve() on a model you ",
                 "fit yourself.")
   }
 
   rcs_call <- rcs_calls[[1L]]
   if (!is.symbol(rcs_call[[2L]])) {
-    stop_svyrcs("the exposure inside rcs() must be a bare variable name, but it is ",
+    stop_svyrcs("the exposure inside rcspline() must be a bare variable name, but it is ",
                 dQuote(deparse1(rcs_call[[2L]]), FALSE), ". Transformations are not supported ",
                 "because the curve is reported on the exposure's own scale; add the transformed ",
                 "variable to the design first, for example ",
-                "design <- update(design, log_bmi = log(bmi)), then use rcs(log_bmi, 4).")
+                "design <- update(design, log_bmi = log(bmi)), then use rcspline(log_bmi, 4).")
   }
   var <- deparse1(rcs_call[[2L]])
   if (is.null(designs[[1L]]$variables[[var]])) {
@@ -487,7 +506,7 @@ svyrcs <- function(formula, design, family = NULL, ref = "median", ref_prob = 0.
         list(var = modifier$var, levels = modifier$levels, ref_level = modifier$ref_level)
       },
       var = var,
-      label = paste0("rcs(", var, ", ", length(knots), ")"),
+      label = paste0("rcspline(", var, ", ", length(knots), ")"),
       ## The term exactly as it appears in the fitted model, so that
       ## survey::regTermTest(fit$model, reformulate(fit$term_label)) just works.
       term_label = term$label,

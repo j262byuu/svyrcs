@@ -38,7 +38,7 @@ design <- survey::svydesign(
   id = ~psu, strata = ~strata, weights = ~weight,
   nest = TRUE, data = nhanes_bmi
 )
-fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+fit <- svyrcs(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 summary(fit)
 
 }

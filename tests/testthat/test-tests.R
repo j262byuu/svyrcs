@@ -43,7 +43,7 @@ test_that("the non-linearity test matches a manual Wald test on the non-linear c
 })
 
 test_that("3 knots leave a single non-linear column", {
-  fit <- svyrcs(tchol ~ rcs(bmi, 3) + age, design = nhanes_design())
+  fit <- svyrcs(tchol ~ rcspline(bmi, 3) + age, design = nhanes_design())
   expect_equal(fit$tests$overall$df1, 2L)
   expect_equal(fit$tests$nonlinear$df1, 1L)
   expect_true(is.finite(fit$tests$nonlinear$p_F))

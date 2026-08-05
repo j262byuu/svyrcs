@@ -7,7 +7,7 @@ test_that("no interaction means no modifier", {
 })
 
 test_that("a two-level factor modifier is found with its levels and columns", {
-  fit <- int_fit("rcs(bmi, knots = KN) * sex + age")
+  fit <- int_fit("rcspline(bmi, knots = KN) * sex + age")
   term <- find_rcs_term(fit)
   m <- find_modifier(fit, term)
 
@@ -20,8 +20,8 @@ test_that("a two-level factor modifier is found with its levels and columns", {
 })
 
 test_that("both formula orders find the same interaction columns", {
-  a <- int_fit("rcs(bmi, knots = KN) * sex + age")
-  b <- int_fit("sex * rcs(bmi, knots = KN) + age")
+  a <- int_fit("rcspline(bmi, knots = KN) * sex + age")
+  b <- int_fit("sex * rcspline(bmi, knots = KN) + age")
 
   ma <- find_modifier(a, find_rcs_term(a))
   mb <- find_modifier(b, find_rcs_term(b))
@@ -35,7 +35,7 @@ test_that("both formula orders find the same interaction columns", {
 })
 
 test_that("a four-level factor gives one column set per non-reference level", {
-  fit <- int_fit("rcs(bmi, knots = KN) * race + age")
+  fit <- int_fit("rcspline(bmi, knots = KN) * race + age")
   term <- find_rcs_term(fit)
   m <- find_modifier(fit, term)
 
@@ -49,7 +49,7 @@ test_that("a four-level factor gives one column set per non-reference level", {
 })
 
 test_that("a logical modifier works", {
-  fit <- int_fit("rcs(bmi, knots = KN) * old + age",
+  fit <- int_fit("rcspline(bmi, knots = KN) * old + age",
                  data_extra = list(old = nhanes_bmi$age >= 65))
   m <- find_modifier(fit, find_rcs_term(fit))
   expect_equal(m$levels, c("FALSE", "TRUE"))
@@ -58,24 +58,24 @@ test_that("a logical modifier works", {
 })
 
 test_that("a numeric modifier is rejected with an explanation", {
-  fit <- int_fit("rcs(bmi, knots = KN) * age")
+  fit <- int_fit("rcspline(bmi, knots = KN) * age")
   expect_error(find_modifier(fit, find_rcs_term(fit)), class = "svyrcs_error")
   expect_error(find_modifier(fit, find_rcs_term(fit)), "Continuous effect modification")
 })
 
 test_that("a three-way interaction is rejected", {
-  fit <- int_fit("rcs(bmi, knots = KN) * sex * race")
+  fit <- int_fit("rcspline(bmi, knots = KN) * sex * race")
   expect_error(find_modifier(fit, find_rcs_term(fit)), class = "svyrcs_error")
 })
 
 test_that("an interaction without the spline main effects is rejected", {
-  fit <- int_fit("rcs(bmi, knots = KN):sex + sex + age")
+  fit <- int_fit("rcspline(bmi, knots = KN):sex + sex + age")
   expect_error(find_modifier(fit, find_rcs_term(fit)), class = "svyrcs_error")
   expect_error(find_modifier(fit, find_rcs_term(fit)), "main effect")
 })
 
 test_that("the selection matrix picks main effects, and adds interactions off the reference", {
-  fit <- int_fit("rcs(bmi, knots = KN) * sex + age")
+  fit <- int_fit("rcspline(bmi, knots = KN) * sex + age")
   term <- find_rcs_term(fit)
   m <- find_modifier(fit, term)
   cn <- names(coef(fit))
@@ -95,7 +95,7 @@ test_that("the selection matrix picks main effects, and adds interactions off th
 })
 
 test_that("the reference group's effective coefficients are the main effects", {
-  fit <- int_fit("rcs(bmi, knots = KN) * sex + age")
+  fit <- int_fit("rcspline(bmi, knots = KN) * sex + age")
   term <- find_rcs_term(fit)
   m <- find_modifier(fit, term)
   b <- coef(fit)

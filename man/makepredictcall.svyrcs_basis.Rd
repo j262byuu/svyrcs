@@ -7,21 +7,21 @@
 \method{makepredictcall}{svyrcs_basis}(var, call)
 }
 \arguments{
-\item{var}{The fitted basis, as produced by \code{\link[=rcs]{rcs()}}.}
+\item{var}{The fitted basis, as produced by \code{\link[=rcspline]{rcspline()}}.}
 
-\item{call}{The call to \code{rcs()} recorded in the model's terms.}
+\item{call}{The call to \code{rcspline()} recorded in the model's terms.}
 }
 \value{
 The call with the fitted knots substituted for whatever \code{knots} was originally given.
 }
 \description{
-\code{\link[stats:makepredictcall]{stats::makepredictcall()}} method for the basis returned by \code{\link[=rcs]{rcs()}}. It rewrites the \code{rcs()} call
+\code{\link[stats:makepredictcall]{stats::makepredictcall()}} method for the basis returned by \code{\link[=rcspline]{rcspline()}}. It rewrites the \code{rcspline()} call
 stored in a model's terms so that it carries the knot locations chosen at fit time. Without it,
 \code{predict(fit, newdata = ...)} would re-derive knots from the quantiles of \code{newdata}, silently
 evaluating a different spline.
 }
 \examples{
-fit <- lm(bmi ~ rcs(age, 4), data = nhanes_bmi)
+fit <- lm(bmi ~ svyrcs::rcspline(age, 4), data = nhanes_bmi)
 # the terms now carry explicit knots rather than "4"
 attr(terms(fit), "predvars")
 

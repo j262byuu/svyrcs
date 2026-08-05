@@ -20,10 +20,10 @@ svyrcs_curve(
 )
 }
 \arguments{
-\item{fit}{A fitted model containing an \code{\link[=rcs]{rcs()}} term, typically from \code{\link[survey:svycoxph]{survey::svycoxph()}} or
+\item{fit}{A fitted model containing an \code{\link[=rcspline]{rcspline()}} term, typically from \code{\link[survey:svycoxph]{survey::svycoxph()}} or
 \code{\link[survey:svyglm]{survey::svyglm()}}. Any model with \code{coef()}, \code{vcov()} and \code{terms()} methods works.}
 
-\item{var}{Name of the exposure. Only needed when the model contains more than one \code{rcs()} term.}
+\item{var}{Name of the exposure. Only needed when the model contains more than one \code{rcspline()} term.}
 
 \item{ref}{Reference value: a number, or one of \code{"median"}, \code{"mean"}, \code{"quantile"}, \code{"min"}
 (minimum-risk point) or \code{"max"} (maximum-risk point). See \code{\link[=svyrcs]{svyrcs()}}.}
@@ -60,7 +60,7 @@ effect modifier. Carries attributes \code{ref}, \code{ref_method}, \code{measure
 \code{degf}, \code{level} and \code{modifier}.
 }
 \description{
-Estimates the exposure-response curve implied by an \code{rcs()} term in an already-fitted survey
+Estimates the exposure-response curve implied by an \code{rcspline()} term in an already-fitted survey
 model, as a contrast against a reference exposure value. \code{\link[=svyrcs]{svyrcs()}} calls this internally; use it
 directly when you have fitted the model yourself, for instance because you need a model
 specification \code{svyrcs()} does not build for you.
@@ -75,7 +75,7 @@ design <- survey::svydesign(
   id = ~psu, strata = ~strata, weights = ~weight,
   nest = TRUE, data = nhanes_bmi
 )
-fit <- survey::svyglm(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+fit <- survey::svyglm(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 curve <- svyrcs_curve(fit, "bmi", n = 20)
 head(curve)
 

@@ -18,7 +18,7 @@ recommended quantiles of \code{x}, or a numeric vector of at least three explici
 A sorted numeric vector of knot locations.
 }
 \description{
-Resolves the \code{knots} argument of \code{\link[=rcs]{rcs()}} into an explicit, sorted vector of knot locations.
+Resolves the \code{knots} argument of \code{\link[=rcspline]{rcspline()}} into an explicit, sorted vector of knot locations.
 Exported so that knot placement can be inspected, or computed once and reused across models.
 }
 \examples{

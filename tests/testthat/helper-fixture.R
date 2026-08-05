@@ -21,7 +21,7 @@ cox_fit <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
-      cached <<- svyrcs(survival::Surv(time, event) ~ rcs(bmi, 4) + age + sex,
+      cached <<- svyrcs(survival::Surv(time, event) ~ rcspline(bmi, 4) + age + sex,
                         design = nhanes_design())
     }
     cached
@@ -32,7 +32,7 @@ gaussian_fit <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
-      cached <<- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = nhanes_design())
+      cached <<- svyrcs(tchol ~ rcspline(bmi, 4) + age + sex, design = nhanes_design())
     }
     cached
   }
@@ -42,13 +42,13 @@ bare_glm <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
-      cached <<- survey::svyglm(tchol ~ rcs(bmi, 4) + age + sex, design = nhanes_design())
+      cached <<- survey::svyglm(tchol ~ rcspline(bmi, 4) + age + sex, design = nhanes_design())
     }
     cached
   }
 })
 
-## Fit a model with an explicit-knot rcs() term directly, bypassing svyrcs(), so the curve and
+## Fit a model with an explicit-knot rcspline() term directly, bypassing svyrcs(), so the curve and
 ## modifier machinery can be tested independently of the formula surgery in svyrcs().
 ##
 ## Knots must be inlined: survey::svyglm() and svycoxph() reject a formula referring to any symbol
@@ -65,7 +65,7 @@ int_model <- function(rhs, response = "tchol", cox = FALSE, data_extra = NULL, n
 }
 
 ## Strip a basis down to a plain numeric matrix, so comparisons are about numbers rather than
-## the knot / class attributes that rcs() deliberately attaches.
+## the knot / class attributes that rcspline() deliberately attaches.
 bare <- function(b) {
   b <- unclass(b)
   attributes(b) <- list(dim = dim(b))

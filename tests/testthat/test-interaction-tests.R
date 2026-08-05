@@ -2,7 +2,7 @@ grouped_fit <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
-      cached <<- svyrcs(tchol ~ rcs(bmi, 4) * sex + age, design = nhanes_design())
+      cached <<- svyrcs(tchol ~ rcspline(bmi, 4) * sex + age, design = nhanes_design())
     }
     cached
   }
@@ -25,7 +25,7 @@ test_that("the interaction and shape tests have the right degrees of freedom", {
   expect_equal(fit$tests$shape$df1, (nk - 2L) * (nlev - 1L))
   expect_equal(fit$tests$interaction$df2, fit$degf)
 
-  four <- svyrcs(tchol ~ rcs(bmi, 4) * race + age, design = nhanes_design())
+  four <- svyrcs(tchol ~ rcspline(bmi, 4) * race + age, design = nhanes_design())
   expect_equal(four$tests$interaction$df1, 3L * 3L)
   expect_equal(four$tests$shape$df1, 2L * 3L)
 })
@@ -73,8 +73,8 @@ test_that("an ungrouped fit keeps the 0.1.0 tests shape", {
 })
 
 test_that("both formula orders give the same interaction test", {
-  a <- svyrcs(tchol ~ rcs(bmi, 4) * sex + age, design = nhanes_design())
-  b <- svyrcs(tchol ~ sex * rcs(bmi, 4) + age, design = nhanes_design())
+  a <- svyrcs(tchol ~ rcspline(bmi, 4) * sex + age, design = nhanes_design())
+  b <- svyrcs(tchol ~ sex * rcspline(bmi, 4) + age, design = nhanes_design())
   expect_equal(a$tests$interaction$F, b$tests$interaction$F, tolerance = 1e-10)
   expect_equal(a$tests$shape$F, b$tests$shape$F, tolerance = 1e-10)
   expect_equal(as.data.frame(a$curve), as.data.frame(b$curve))

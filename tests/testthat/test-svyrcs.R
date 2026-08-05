@@ -15,9 +15,9 @@ test_that("the Cox path gives hazard ratios and counts observations, not events"
 test_that("each glm family maps to the right effect measure", {
   design <- nhanes_design()
   cases <- list(
-    list(f = tchol ~ rcs(bmi, 4) + age, family = NULL, measure = "Difference", null = 0),
-    list(f = high_chol ~ rcs(bmi, 4) + age, family = quasibinomial(), measure = "OR", null = 1),
-    list(f = statin_use ~ rcs(bmi, 4) + age, family = quasipoisson(), measure = "Mean ratio",
+    list(f = tchol ~ rcspline(bmi, 4) + age, family = NULL, measure = "Difference", null = 0),
+    list(f = high_chol ~ rcspline(bmi, 4) + age, family = quasibinomial(), measure = "OR", null = 1),
+    list(f = statin_use ~ rcspline(bmi, 4) + age, family = quasipoisson(), measure = "Mean ratio",
          null = 1)
   )
   for (cs in cases) {
@@ -33,8 +33,8 @@ test_that("each glm family maps to the right effect measure", {
 
 test_that("weighted knots differ from unweighted ones and both are reproducible", {
   design <- nhanes_design()
-  fw <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = design, weighted_knots = TRUE)
-  fu <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = design, weighted_knots = FALSE)
+  fw <- svyrcs(tchol ~ rcspline(bmi, 4) + age, design = design, weighted_knots = TRUE)
+  fu <- svyrcs(tchol ~ rcspline(bmi, 4) + age, design = design, weighted_knots = FALSE)
 
   ## Both are computed on the analytic sample -- the rows the model is fitted on -- not on the
   ## design as supplied; `tchol` is missing for 649 of them.
@@ -53,7 +53,7 @@ test_that("weighted knots differ from unweighted ones and both are reproducible"
 test_that("explicit knots are used verbatim regardless of weighted_knots", {
   kn <- c(20, 25, 30, 40)
   for (w in c(TRUE, FALSE)) {
-    fit <- svyrcs(tchol ~ rcs(bmi, kn) + age, design = nhanes_design(), weighted_knots = w)
+    fit <- svyrcs(tchol ~ rcspline(bmi, kn) + age, design = nhanes_design(), weighted_knots = w)
     expect_equal(fit$knots, kn)
     expect_equal(fit$nk, 4L)
   }
@@ -65,7 +65,7 @@ test_that("the fitted model carries explicit knots and is self-contained", {
   ## but base R in scope
   pv <- as.list(attr(terms(fit$model), "predvars"))
   is_rcs <- vapply(pv, function(e) is.call(e) &&
-                     identical(as.character(e[[1L]])[1L], "rcs"), logical(1L))
+                     identical(as.character(e[[1L]])[1L], "rcspline"), logical(1L))
   expect_true(any(is_rcs))
   expect_equal(eval(pv[is_rcs][[1L]]$knots, envir = baseenv()), fit$knots)
 
@@ -80,7 +80,7 @@ test_that("the fitted model carries explicit knots and is self-contained", {
 test_that("the number of knots changes the model as expected", {
   design <- nhanes_design()
   for (nk in 3:7) {
-    fit <- svyrcs(tchol ~ rcs(bmi, nk) + age, design = design)
+    fit <- svyrcs(tchol ~ rcspline(bmi, nk) + age, design = design)
     expect_equal(fit$nk, nk)
     expect_length(fit$knots, nk)
     expect_equal(fit$tests$overall$df1, nk - 1L)
@@ -91,7 +91,7 @@ test_that("the number of knots changes the model as expected", {
 test_that("a subset design keeps its own degrees of freedom and sample size", {
   design <- nhanes_design()
   sub <- subset(design, cycle == "2005-2006")
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = sub)
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) + age, design = sub)
   expect_equal(fit$degf, survey::degf(sub))
   expect_lt(fit$degf, survey::degf(design))
   expect_lt(fit$n, nrow(nhanes_bmi))
@@ -111,17 +111,17 @@ test_that("rows dropped for missing data are counted and reported", {
 test_that("misuse is rejected with informative errors", {
   design <- nhanes_design()
   expect_error(svyrcs(tchol ~ age + sex, design = design), class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4) + rcs(age, 4), design = design), class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = nhanes_bmi), class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(nosuchvar, 4), design = design), class = "svyrcs_error")
-  expect_error(svyrcs(~ rcs(bmi, 4), design = design), class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 2), design = design), class = "svyrcs_error")
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4) + rcspline(age, 4), design = design), class = "svyrcs_error")
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = nhanes_bmi), class = "svyrcs_error")
+  expect_error(svyrcs(tchol ~ rcspline(nosuchvar, 4), design = design), class = "svyrcs_error")
+  expect_error(svyrcs(~ rcspline(bmi, 4), design = design), class = "svyrcs_error")
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 2), design = design), class = "svyrcs_error")
 })
 
 test_that("family is ignored with a warning for a Cox model", {
   skip_if_not_installed("survival")
   expect_warning(
-    svyrcs(survival::Surv(time, event) ~ rcs(bmi, 4) + age, design = nhanes_design(),
+    svyrcs(survival::Surv(time, event) ~ rcspline(bmi, 4) + age, design = nhanes_design(),
            family = quasibinomial()),
     "ignored"
   )
@@ -130,7 +130,7 @@ test_that("family is ignored with a warning for a Cox model", {
 test_that("a bare Surv() response works when survival is attached", {
   skip_if_not_installed("survival")
   library(survival)
-  fit <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age, design = nhanes_design())
+  fit <- svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age, design = nhanes_design())
   expect_s3_class(fit$model, "svycoxph")
   expect_equal(fit$measure, "HR")
 })

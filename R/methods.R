@@ -167,7 +167,7 @@ print.svyrcs <- function(x, ...) {
 #'   id = ~psu, strata = ~strata, weights = ~weight,
 #'   nest = TRUE, data = nhanes_bmi
 #' )
-#' fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+#' fit <- svyrcs(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 #' summary(fit)
 #'
 #' @export
@@ -241,7 +241,7 @@ print.summary.svyrcs <- function(x, ...) {
 #'   id = ~psu, strata = ~strata, weights = ~weight,
 #'   nest = TRUE, data = nhanes_bmi
 #' )
-#' fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+#' fit <- svyrcs(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 #'
 #' # against the fitted reference
 #' predict(fit, x = c(20, 25, 30, 35))

@@ -4,7 +4,7 @@ mi_fits <- local({
     if (is.null(cached)) {
       kn <- rcs_knots(nhanes_bmi$bmi, 4)
       f <- stats::as.formula(do.call(substitute, list(
-        str2lang("bmi ~ rcs(age, knots = KN) + sex + tchol + hdl"), list(KN = kn)
+        str2lang("bmi ~ rcspline(age, knots = KN) + sex + tchol + hdl"), list(KN = kn)
       )))
       cached <<- component_fits(mi_design(), f)
     }
@@ -26,7 +26,7 @@ test_that("pooling reproduces mitools::MIcombine", {
 test_that("identical imputations give zero between-imputation variance", {
   kn <- rcs_knots(nhanes_bmi$bmi, 4)
   f <- stats::as.formula(do.call(substitute, list(
-    str2lang("bmi ~ rcs(age, knots = KN) + sex"), list(KN = kn)
+    str2lang("bmi ~ rcspline(age, knots = KN) + sex"), list(KN = kn)
   )))
   fits <- component_fits(mi_design_degenerate(), f)
   pooled <- pool_fits(fits, survey::degf(mi_design_degenerate()$designs[[1]]))

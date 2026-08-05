@@ -53,7 +53,7 @@ test_that("covariate values do not affect the curve, because they cancel", {
 test_that("a covariate whose name contains the exposure name is not absorbed", {
   design <- nhanes_design()
   design$variables$bmi_over30 <- as.numeric(design$variables$bmi > 30)
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) + bmi_over30 + age, design = design)
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) + bmi_over30 + age, design = design)
 
   term <- find_rcs_term(fit$model)
   idx <- spline_coef_index(fit$model, term)

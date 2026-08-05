@@ -15,7 +15,7 @@ test_that("the base fallback draws every kind of fit without error", {
   fits <- list(
     single = gaussian_fit(),
     cox = cox_fit(),
-    grouped = svyrcs(tchol ~ rcs(bmi, 4) * sex + age, design = nhanes_design())
+    grouped = svyrcs(tchol ~ rcspline(bmi, 4) * sex + age, design = nhanes_design())
   )
   for (nm in names(fits)) {
     expect_silent(on_device(base_plot_svyrcs(fits[[nm]])))
@@ -27,7 +27,7 @@ test_that("the base fallback draws every kind of fit without error", {
 })
 
 test_that("the base fallback draws a multiply imputed fit", {
-  fit <- svyrcs(bmi ~ rcs(age, 4) + sex + tchol, design = mi_design())
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + sex + tchol, design = mi_design())
   expect_silent(on_device(base_plot_svyrcs(fit)))
 })
 
@@ -41,7 +41,7 @@ test_that("the base fallback returns its argument invisibly", {
 })
 
 test_that("graphical parameters are restored", {
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) * sex + age, design = nhanes_design())
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) * sex + age, design = nhanes_design())
   on_device({
     before <- graphics::par(c("mfrow", "mar"))
     base_plot_svyrcs(fit, facet = TRUE)
@@ -51,7 +51,7 @@ test_that("graphical parameters are restored", {
 })
 
 test_that("faceted panels share one y axis", {
-  fit <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = nhanes_design())
+  fit <- svyrcs(Surv(time, event) ~ rcspline(bmi, 4) * sex + age, design = nhanes_design())
   skip_if_not_installed("survival")
 
   usr <- list()
@@ -126,7 +126,7 @@ test_that("autoplot is registered on ggplot2's generic", {
 
 test_that("plot() and autoplot() agree on the drawn data", {
   skip_if_not_installed("ggplot2")
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) * sex + age, design = nhanes_design())
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) * sex + age, design = nhanes_design())
   on_device({
     p <- plot(fit)
     expect_equal(p$data, ggplot2::autoplot(fit)$data)

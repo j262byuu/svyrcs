@@ -38,7 +38,7 @@ modifier_contrasts <- function(x, var, fitted = NULL) {
 #' Returns `NULL` when the spline term appears on its own, which is what keeps the ungrouped code
 #' path identical to a fit without any modifier.
 #'
-#' @param fit A fitted model containing an [rcs()] term.
+#' @param fit A fitted model containing an [rcspline()] term.
 #' @param term The term description from `find_rcs_term()`.
 #'
 #' @return `NULL`, or a list with `var`, `levels`, `ref_level` and `columns` (a named list of
@@ -78,7 +78,7 @@ find_modifier <- function(fit, term) {
   spline_cols <- spline_colnames(term$label, term$nk)
   if (!all(spline_cols %in% coef_names)) {
     stop_svyrcs("the model has an interaction with '", mod, "' but no main effect for the spline. ",
-                "Write rcs(", term$var, ", k) * ", mod, " rather than rcs(", term$var, ", k):", mod,
+                "Write rcspline(", term$var, ", k) * ", mod, " rather than rcspline(", term$var, ", k):", mod,
                 ", so that the reference level's curve is estimated.")
   }
 
@@ -109,7 +109,7 @@ find_modifier <- function(fit, term) {
     cols <- if (all(forward %in% coef_names)) {
       forward
     } else if (all(reverse %in% coef_names)) {
-      ## `m * rcs(x, k)` puts the modifier first in the coefficient name
+      ## `m * rcspline(x, k)` puts the modifier first in the coefficient name
       reverse
     } else if (any(forward %in% coef_names) || any(reverse %in% coef_names)) {
       ## Some but not all of the interaction columns were estimated: the fit is rank deficient and

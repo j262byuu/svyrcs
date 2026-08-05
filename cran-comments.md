@@ -93,8 +93,8 @@ two agree to about 1e-14, and avoiding the dependency also avoids `rms`'s `datad
 
 ## Note on masking
 
-The package exports a function named `rcs()`, which masks `rms::rcs()` when both packages are
-attached. This is intentional and documented in `?rcs` and in the package-level help. The two produce
+The package exports a function named `rcspline()`, which masks `rms::rcs()` when both packages are
+attached. This is intentional and documented in `?rcspline` and in the package-level help. The two produce
 numerically identical bases given the same knots, and `rcs_knots()` reproduces
 `Hmisc::rcspline.eval()`'s default placement exactly, so the masking cannot change a result.
 `svyrcs::rcs()` additionally stores its knots on the returned object and registers a

@@ -1,5 +1,5 @@
 test_that("a grouped curve has one block per level, in level order", {
-  fit <- int_model("rcs(bmi, knots = KN) * race + age")
+  fit <- int_model("rcspline(bmi, knots = KN) * race + age")
   cv <- svyrcs_curve(fit, "bmi", n = 20)
 
   expect_true("group" %in% names(cv))
@@ -12,7 +12,7 @@ test_that("a grouped curve has one block per level, in level order", {
 })
 
 test_that("every group's estimate at the reference is exactly the null with zero SE", {
-  fit <- int_model("rcs(bmi, knots = KN) * sex + age", cox = TRUE,
+  fit <- int_model("rcspline(bmi, knots = KN) * sex + age", cox = TRUE,
                    response = "survival::Surv(time, event)")
   cv <- svyrcs_curve(fit, "bmi", ref = 27)
   at_ref <- svyrcs_curve(fit, "bmi", ref = 27, at = 27)
@@ -24,7 +24,7 @@ test_that("every group's estimate at the reference is exactly the null with zero
 
 test_that("per-group contrasts reproduce predict(type = 'lp') within each subgroup", {
   skip_if_not_installed("survival")
-  fit <- int_model("rcs(bmi, knots = KN) * sex + age", cox = TRUE,
+  fit <- int_model("rcspline(bmi, knots = KN) * sex + age", cox = TRUE,
                    response = "survival::Surv(time, event)")
   design <- nhanes_design()
   grid <- seq(18, 45, length.out = 25)
@@ -46,8 +46,8 @@ test_that("per-group contrasts reproduce predict(type = 'lp') within each subgro
 })
 
 test_that("both formula orders give identical curves", {
-  a <- svyrcs_curve(int_model("rcs(bmi, knots = KN) * sex + age"), "bmi", ref = 27, n = 15)
-  b <- svyrcs_curve(int_model("sex * rcs(bmi, knots = KN) + age"), "bmi", ref = 27, n = 15)
+  a <- svyrcs_curve(int_model("rcspline(bmi, knots = KN) * sex + age"), "bmi", ref = 27, n = 15)
+  b <- svyrcs_curve(int_model("sex * rcspline(bmi, knots = KN) + age"), "bmi", ref = 27, n = 15)
   expect_equal(as.data.frame(a)[c("x", "estimate", "conf.low", "conf.high", "se")],
                as.data.frame(b)[c("x", "estimate", "conf.low", "conf.high", "se")])
   expect_equal(as.character(a$group), as.character(b$group))
@@ -56,7 +56,7 @@ test_that("both formula orders give identical curves", {
 test_that("the reference group's curve equals the same model fitted without interaction terms", {
   ## The reference level uses main effects only, so its estimates must be exactly what the
   ## selection matrix extracts from the full coefficient vector.
-  fit <- int_model("rcs(bmi, knots = KN) * sex + age")
+  fit <- int_model("rcspline(bmi, knots = KN) * sex + age")
   term <- find_rcs_term(fit)
   m <- find_modifier(fit, term)
   b <- coef(fit)
@@ -72,7 +72,7 @@ test_that("the reference group's curve equals the same model fitted without inte
 })
 
 test_that("a non-reference group's variance includes the main-interaction covariance", {
-  fit <- int_model("rcs(bmi, knots = KN) * sex + age")
+  fit <- int_model("rcspline(bmi, knots = KN) * sex + age")
   term <- find_rcs_term(fit)
   m <- find_modifier(fit, term)
   b <- coef(fit)
@@ -96,7 +96,7 @@ test_that("a non-reference group's variance includes the main-interaction covari
 })
 
 test_that("group selects a subset of levels and rejects unknown ones", {
-  fit <- int_model("rcs(bmi, knots = KN) * race + age")
+  fit <- int_model("rcspline(bmi, knots = KN) * race + age")
   one <- svyrcs_curve(fit, "bmi", n = 10, group = "Other")
   expect_equal(nrow(one), 10L)
   expect_equal(as.character(unique(one$group)), "Other")
@@ -110,7 +110,7 @@ test_that("group selects a subset of levels and rejects unknown ones", {
 
 test_that("a curve-derived reference is located on the reference level and says so", {
   skip_if_not_installed("survival")
-  fit <- int_model("rcs(bmi, knots = KN) * sex + age", cox = TRUE,
+  fit <- int_model("rcspline(bmi, knots = KN) * sex + age", cox = TRUE,
                    response = "survival::Surv(time, event)")
   cv <- svyrcs_curve(fit, "bmi", ref = "min", n = 300)
   expect_match(attr(cv, "ref_method"), "minimum-risk point \\(Male\\)")
@@ -121,7 +121,7 @@ test_that("a curve-derived reference is located on the reference level and says 
 })
 
 test_that("all groups share one reference value", {
-  fit <- int_model("rcs(bmi, knots = KN) * race + age")
+  fit <- int_model("rcspline(bmi, knots = KN) * race + age")
   cv <- svyrcs_curve(fit, "bmi", n = 50)
   ref <- attr(cv, "ref")
   at_ref <- svyrcs_curve(fit, "bmi", at = ref)

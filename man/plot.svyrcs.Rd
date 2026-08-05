@@ -79,7 +79,7 @@ design <- survey::svydesign(
 )
 # n = 50 rather than the default 200: the example draws the same curve and keeps well inside
 # CRAN's five-second budget for a single example.
-fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design, n = 50)
+fit <- svyrcs(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design, n = 50)
 
 # works with or without ggplot2 installed
 plot(fit)

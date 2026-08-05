@@ -8,17 +8,17 @@ test_that("a Cox model fits on a replicate-weight design", {
   skip_if_not_installed("survival")
   rd <- rep_design()
   fit <- suppressWarnings(
-    svyrcs(survival::Surv(time, event) ~ rcs(bmi, 4) + age, design = rd, n = 5))
+    svyrcs(survival::Surv(time, event) ~ rcspline(bmi, 4) + age, design = rd, n = 5))
   expect_s3_class(fit, "svyrcs")
   expect_true(all(is.finite(coef(fit$model))))
 
   ## and it agrees with the linearised fit on the same knots, which is the point of the fix
   lin <- suppressWarnings(
-    svyrcs(survival::Surv(time, event) ~ rcs(bmi, 4) + age, design = nhanes_design(), n = 5))
+    svyrcs(survival::Surv(time, event) ~ rcspline(bmi, 4) + age, design = nhanes_design(), n = 5))
   expect_equal(unname(coef(fit$model)), unname(coef(lin$model)), tolerance = 1e-10)
 
   ## the GLM path on the same design was already fine and must stay so
-  expect_s3_class(suppressWarnings(svyrcs(tchol ~ rcs(bmi, 4) + age, design = rd, n = 5)), "svyrcs")
+  expect_s3_class(suppressWarnings(svyrcs(tchol ~ rcspline(bmi, 4) + age, design = rd, n = 5)), "svyrcs")
 })
 
 test_that("a knot count that cannot be placed is refused, not silently shortened", {
@@ -46,7 +46,7 @@ test_that("a non-syntactic exposure name works", {
   d[["waist cm"]] <- d$bmi * 2.5
   des <- survey::svydesign(id = ~psu, strata = ~strata, weights = ~weight, nest = TRUE, data = d)
 
-  fit <- svyrcs(tchol ~ rcs(`waist cm`, 4), design = des, n = 5)
+  fit <- svyrcs(tchol ~ rcspline(`waist cm`, 4), design = des, n = 5)
   expect_length(fit$knots, 4L)
   expect_true(all(is.finite(fit$knots)))
 
@@ -59,7 +59,7 @@ test_that("a numeric NA level is refused with a typed error", {
   ## The 0.6.2 test pinned `level = NA`, which is logical and fails is.numeric(). NA_real_ and NaN
   ## took a different branch and reached the base "missing value where TRUE/FALSE needed".
   des <- nhanes_design()
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = des, n = 5)
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) + age, design = des, n = 5)
   for (bad in list(NA, NA_real_, NaN, Inf, -Inf)) {
     expect_error(predict(fit, x = 30, level = bad), class = "svyrcs_error")
   }
@@ -71,7 +71,7 @@ test_that("`at` and `range` are not both accepted", {
   ## reference search, so at = c(20, 25, 30) with range = c(100, 200) and ref = "min" returned a
   ## grid of 20-30 anchored at 200.
   des <- nhanes_design()
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = des, n = 5)
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) + age, design = des, n = 5)
   expect_error(svyrcs_curve(fit$model, var = "bmi", at = c(20, 25, 30), range = c(100, 200)),
                class = "svyrcs_error")
   expect_error(svyrcs_curve(fit$model, var = "bmi", at = c(20, 25, 30), range = c(100, 200)),
@@ -120,14 +120,14 @@ test_that("the small-sample knot rule says when it does not apply", {
   d$y <- 0.3 * d$x + rnorm(n)
   des <- survey::svydesign(id = ~psu, strata = ~strata, weights = ~w, nest = TRUE, data = d)
 
-  expect_warning(fw <- svyrcs(y ~ rcs(x, 4), design = des, n = 5), "60 analytic observations")
-  expect_warning(svyrcs(y ~ rcs(x, 4), design = des, n = 5), "weighted_knots = FALSE")
+  expect_warning(fw <- svyrcs(y ~ rcspline(x, 4), design = des, n = 5), "60 analytic observations")
+  expect_warning(svyrcs(y ~ rcspline(x, 4), design = des, n = 5), "weighted_knots = FALSE")
 
   ## the unweighted path applies the rule and does not warn about it
-  fu <- svyrcs(y ~ rcs(x, 4), design = des, n = 5, weighted_knots = FALSE)
+  fu <- svyrcs(y ~ rcspline(x, 4), design = des, n = 5, weighted_knots = FALSE)
   expect_equal(fu$knots[c(1, 4)], c(sort(d$x)[5], sort(d$x)[n - 4]), tolerance = 1e-6)
   expect_false(isTRUE(all.equal(fw$knots, fu$knots)))
 
   ## and a large sample warns about neither
-  expect_silent(svyrcs(tchol ~ rcs(bmi, 4), design = nhanes_design(), n = 5))
+  expect_silent(svyrcs(tchol ~ rcspline(bmi, 4), design = nhanes_design(), n = 5))
 })

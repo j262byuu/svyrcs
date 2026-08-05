@@ -15,7 +15,7 @@ test_that("a transformation that turns finite values non-finite still defines th
   d$w <- 1
   des <- survey::svydesign(id = ~psu, strata = ~strata, weights = ~w, nest = TRUE, data = d)
 
-  fit <- suppressWarnings(svyrcs(y ~ rcs(x, 4) + log(z), design = des, n = 5))
+  fit <- suppressWarnings(svyrcs(y ~ rcspline(x, 4) + log(z), design = des, n = 5))
   used <- rownames(model.frame(fit$model))
   analytic <- des[rownames(d) %in% used, ]
 
@@ -34,13 +34,13 @@ test_that("a transformation that turns finite values non-finite still defines th
 
 test_that("subset= is refused rather than silently applied after knot derivation", {
   des <- nhanes_design()
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = des, subset = (age > 40)),
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = des, subset = (age > 40)),
                class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = des, subset = (age > 40)),
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = des, subset = (age > 40)),
                "subset\\(design")
 })
 
-test_that("a namespaced rcs() freezes its knots for direct model prediction", {
+test_that("a namespaced rcspline() freezes its knots for direct model prediction", {
   ## svyrcs() inlines knots itself, so every namespaced test went through a path that never reaches
   ## makepredictcall(). A direct model fit does reach it.
   set.seed(1)
@@ -50,7 +50,7 @@ test_that("a namespaced rcs() freezes its knots for direct model prediction", {
   nd <- data.frame(x = c(995, 1000, 1005, 1010))
   ref <- rcs_design_matrix(nd$x, kn)
 
-  for (rhs in c("rcs(x, 4)", "svyrcs::rcs(x, 4)", "svyrcs:::rcs(x, 4)")) {
+  for (rhs in c("rcspline(x, 4)", "svyrcs::rcspline(x, 4)", "svyrcs:::rcspline(x, 4)")) {
     fit <- lm(stats::as.formula(paste("y ~", rhs)), data = d)
     label <- attr(terms(fit), "term.labels")[1L]
     basis <- model.frame(delete.response(terms(fit)), nd)[[label]]
@@ -62,7 +62,7 @@ test_that("a namespaced rcs() freezes its knots for direct model prediction", {
 
 test_that("a pooled imputation fit keeps its designs reachable", {
   des <- mi_design()
-  fit <- svyrcs(bmi ~ rcs(age, 4) + tchol, design = des, n = 5)
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + tchol, design = des, n = 5)
 
   dl <- fit_design(fit$model)
   expect_type(dl, "list")
@@ -75,7 +75,7 @@ test_that("a pooled imputation fit keeps its designs reachable", {
 
 test_that("a named reference on an imputation fit resolves as it did at fitting time", {
   des <- mi_design()
-  fit <- svyrcs(bmi ~ rcs(age, 4) + tchol, design = des, n = 5)
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + tchol, design = des, n = 5)
 
   ## the fitting path averages the per-imputation survey-weighted medians
   pooled <- mean(vapply(des$designs, function(d) {
@@ -97,6 +97,6 @@ test_that("a named reference on an imputation fit resolves as it did at fitting 
 test_that("the pooled fit has not grown", {
   ## Storing the designs alongside the fits pushed object.size() from 47 MB to 59 MB; they are read
   ## back from the component fits instead.
-  fit <- svyrcs(bmi ~ rcs(age, 4) + tchol, design = mi_design(), n = 5)
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + tchol, design = mi_design(), n = 5)
   expect_lt(as.numeric(object.size(fit)) / 1024^2, 50)
 })

@@ -33,7 +33,7 @@ design <- svydesign(
   nest = TRUE, data = nhanes_bmi
 )
 
-fit <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex + race, design = design)
+fit <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) + age + sex + race, design = design)
 fit
 #> Restricted cubic spline on a complex survey design
 #>
@@ -54,13 +54,13 @@ predict(fit, x = c(25, 30, 35))    # estimates at values you choose
 Anchor the curve wherever the analysis calls for it:
 
 ```r
-svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age, design = design, ref = "min")
+svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) + age, design = design, ref = "min")
 ```
 
 Estimate one curve per subgroup, from a single model, with a test of whether they differ:
 
 ```r
-by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+by_sex <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) * sex + age, design = design)
 by_sex$tests$interaction   # p for interaction
 by_sex$tests$shape         # does the *curvature* differ, or is the curve just shifted?
 plot(by_sex)               # one coloured curve per group; facet = TRUE to panel them
@@ -71,17 +71,17 @@ Analyse multiply imputed data — fitted in every imputation, combined by Rubin'
 ```r
 design_mi <- svydesign(id = ~psu, strata = ~strata, weights = ~weight,
                        nest = TRUE, data = mitools::imputationList(completed_datasets))
-svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + tchol, design = design_mi)
+svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) + age + tchol, design = design_mi)
 ```
 
 Any outcome `survey` can fit:
 
 | outcome | call | reports |
 |---|---|---|
-| survival | `Surv(time, event) ~ rcs(x, 4)` | hazard ratio |
-| binary | `y ~ rcs(x, 4)`, `family = quasibinomial()` | odds ratio |
-| rate / count | `y ~ rcs(x, 4)`, `family = quasipoisson()` | rate ratio |
-| continuous | `y ~ rcs(x, 4)` | mean difference |
+| survival | `Surv(time, event) ~ rcspline(x, 4)` | hazard ratio |
+| binary | `y ~ rcspline(x, 4)`, `family = quasibinomial()` | odds ratio |
+| rate / count | `y ~ rcspline(x, 4)`, `family = quasipoisson()` | rate ratio |
+| continuous | `y ~ rcspline(x, 4)` | mean difference |
 
 ## What this does that a hand-rolled script does not
 
