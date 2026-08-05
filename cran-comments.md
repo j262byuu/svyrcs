@@ -2,7 +2,7 @@
 
 ## Submission
 
-svyrcs 0.6.4 — new submission.
+svyrcs 0.7.0 — new submission.
 
 The package fits restricted cubic splines inside `survey` models, so that exposure-response curves
 for complex survey data (NHANES and similar) are estimated with sampling weights and design-based
@@ -27,8 +27,8 @@ All six GitHub Actions jobs reported `Status: OK`.
 
 The hard-dependencies-only run installs nothing from `Suggests` beyond what the test suite itself
 needs, and asserts that ggplot2 is absent before checking, so the base graphics fallback is
-exercised rather than assumed. It reported `Status: OK` with 849 tests passing and 19 skipped; the
-other five jobs ran the full suite of 1037 tests with nothing skipped.
+exercised rather than assumed. It reported `Status: OK` with 853 tests passing and 22 skipped; the
+other five jobs ran the full suite of 1050 tests with nothing skipped.
 
 One job additionally installs TinyTeX and HTML Tidy and drops `--no-manual`, so both the PDF and the
 HTML manual are built and checked. A post-check step asserts that those two lines are present and
@@ -66,7 +66,7 @@ are wrapped in `\donttest{}`, as are the secondary plotting calls in `?plot.svyr
 graphics fallback and the ggplot2 modification. All of them run cleanly under `--run-donttest`, which
 was included in every check above.
 
-The test suite is 1037 tests and takes about three minutes. Tests that need a `Suggests` package are
+The test suite is 1050 tests and takes about two minutes. Tests that need a `Suggests` package are
 guarded with `skip_if_not_installed()`.
 
 ## Dependencies
@@ -91,14 +91,31 @@ and knot placement against Harrell's reference implementation; neither is used a
 package deliberately does not depend on `rms`, even though it implements the same spline basis: the
 two agree to about 1e-14, and avoiding the dependency also avoids `rms`'s `datadist` global option.
 
-## Note on masking
+## Relationship to `rms`
 
-The package exports a function named `rcspline()`, which masks `rms::rcs()` when both packages are
-attached. This is intentional and documented in `?rcspline` and in the package-level help. The two produce
-numerically identical bases given the same knots, and `rcs_knots()` reproduces
-`Hmisc::rcspline.eval()`'s default placement exactly, so the masking cannot change a result.
-`svyrcs::rcs()` additionally stores its knots on the returned object and registers a
-`makepredictcall()` method, which is what makes prediction on new data safe.
+This package implements the same restricted cubic spline basis as `rms::rcs()`, and the two agree to
+about 1e-14 given the same knots. It does **not** depend on `rms`: avoiding the dependency also
+avoids `rms`'s `datadist` global option, and `Hmisc` and `rms` are suggested purely so the test suite
+can check this package's basis and knot placement against Harrell's reference implementation.
+
+The spline function is called `rcspline()`. It was named `rcs()` until 0.7.0, which collided with
+`rms::rcs()` and masked it whenever both packages were attached. The name was changed because that
+masking could not be made safe rather than merely inconvenient: an `ols()`, `lrm()` or `cph()` model
+written with a bare `rcs()` picked up this basis, fitted correctly — coefficients and fitted values
+identical to `rms::rcs()` to 1e-16 — and then silently lost the `Nonlinear` row from `anova()`, which
+is usually the reason for fitting a spline at all. No error and no warning were produced.
+
+There is no collision now, and no attach order for a user to remember. `rcs()` in an `rms` formula is
+unambiguously `rms::rcs()`.
+
+Two residual behaviours are documented in `?rcspline` and pinned by tests in
+`tests/testthat/test-rms-boundary.R`, which record what happens rather than what would be preferred,
+so that a change in either package surfaces rather than drifts:
+
+* `rcspline()` used inside an `rms` model fits, but is not an `rms` design term, so `anova()` reports
+  no `Nonlinear` row and `Predict()` fails.
+* Two `rcspline()` terms in one `rms` model produce duplicate column names and are refused by
+  `rms::Design()`.
 
 ## Downstream dependencies
 
