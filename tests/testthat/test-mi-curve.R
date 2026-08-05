@@ -2,7 +2,7 @@ mi_gauss <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
-      cached <<- svyrcs(bmi ~ rcs(age, 4) + sex + tchol + hdl, design = mi_design())
+      cached <<- svyrcs(bmi ~ rcspline(age, 4) + sex + tchol + hdl, design = mi_design())
     }
     cached
   }
@@ -80,7 +80,7 @@ test_that("with nothing imputed the degrees of freedom take the formula's zero-i
   ## nu = 31. Following them literally is the point of using a named rule.
   ## m = 3 and a two-parameter non-linear block give k(m - 1) = 4, where Reiter's expansion is
   ## undefined and the fallback warns. That is asserted separately below.
-  fit <- suppressWarnings(svyrcs(bmi ~ rcs(age, 4) + sex, design = mi_design_degenerate()))
+  fit <- suppressWarnings(svyrcs(bmi ~ rcspline(age, 4) + sex, design = mi_design_degenerate()))
   vstar <- (fit$degf + 1) / (fit$degf + 3) * fit$degf
   expect_equal(unique(fit$curve$df), vstar)
   expect_identical(unique(fit$curve$fmi), 0)
@@ -92,14 +92,14 @@ test_that("with nothing imputed the degrees of freedom take the formula's zero-i
 test_that("a block too small for the small-sample correction warns and falls back", {
   ## Reiter's expansion contains 1/(k(m - 1) - 4). With m = 3 and a 2-parameter block that is a
   ## division by zero; mitml returns 4 or NaN there, which is not a usable reference distribution.
-  w <- capture_warnings(fit <- svyrcs(bmi ~ rcs(age, 4) + sex, design = mi_design_degenerate()))
+  w <- capture_warnings(fit <- svyrcs(bmi ~ rcspline(age, 4) + sex, design = mi_design_degenerate()))
   expect_true(any(grepl("k\\(m - 1\\) > 4", w)))
   expect_true(any(grepl("increase the number of imputations", w)))
   expect_equal(fit$tests$nonlinear$df2, fit$degf)
   expect_true(is.finite(fit$tests$nonlinear$p_F))
 
   ## with more imputations the correction applies and no warning is raised
-  big <- svyrcs(bmi ~ rcs(age, 4) + sex,
+  big <- svyrcs(bmi ~ rcspline(age, 4) + sex,
                 design = survey::svydesign(id = ~psu, strata = ~strata, weights = ~weight,
                                            nest = TRUE,
                                            data = mitools::imputationList(rep(list(nhanes_bmi), 6))))

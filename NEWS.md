@@ -1,3 +1,57 @@
+# svyrcs 0.7.0
+
+## Breaking: `rcs()` is now `rcspline()`
+
+The spline function has been renamed. **Every formula must be updated**; the old name raises an error
+that says so.
+
+```r
+svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age, design = design)   # was rcs(bmi, 4)
+```
+
+`rcs()` collided with `rms::rcs()`, and R resolves that by masking whichever package was attached
+first. The collision could not be made safe, and the reason is worth stating because it is not the
+obvious one:
+
+* A `cph()`, `lrm()` or `ols()` model written with a bare `rcs()` while `svyrcs` was attached picked
+  up **this** basis. It fitted correctly -- coefficients and fitted values identical to `rms::rcs()`
+  to 1e-16 -- and then **silently lost the `Nonlinear` row from `anova()`**. That row is usually the
+  reason for fitting a spline at all. No error, no warning, and the only visible sign was in
+  `print(fit)`, which a user working from `anova()` never sees.
+* `rms::Predict()` failed outright on such a model, which pushes a user further toward reading
+  `anova()` alone.
+* Two spline terms in one `rms` model produced duplicate column names and were rejected by
+  `rms::Design()` -- so nothing was ever misattributed, but the safety was upstream, not ours, and
+  the error message blamed factor levels.
+* In the other direction, attaching `rms` after `svyrcs` made every `svyrcs()` call fail with a
+  message telling the user to refit with `svyrcs()`, which is what they were doing.
+
+Documenting an attach order was considered and rejected: a convention only protects people who
+already know about the conflict, and the people at risk are the ones writing a bare `rcs()` because
+that is what Harrell's book, the `rms` vignettes and every existing script use.
+
+Renaming now costs nothing -- the package is not on CRAN and has no downstream users. After
+acceptance it would be a breaking change requiring a deprecation cycle.
+
+`rcspline()` in an `rms` model still fits and still loses the `Nonlinear` test, because the basis
+carries this package's knot attributes rather than `rms`'s design attributes. That is documented in
+`?rcspline` and pinned by a test, so a change in either package's behaviour surfaces rather than
+drifts. Making it fail loudly instead is under evaluation.
+
+## Knot-placement equivalence, stated precisely
+
+`rcs_knots()` reproduces `Hmisc::rcspline.eval()` -- with limits now written down rather than implied:
+
+* only when `weighted_knots = FALSE`, or when the weights are constant. The default uses
+  survey-weighted quantiles, which `Hmisc` has no equivalent of.
+* **except at n = 9 with 4 or 5 knots**, where the order-statistic replacements collide with the
+  interior knots. `Hmisc` silently returns three knots; this package raises an error. Returning fewer
+  knots than were requested fits a different model than the caller asked for, and doing that quietly
+  is the behaviour 0.6.4 set out to remove. n = 8, 12 and 20 agree exactly.
+
+The claim that the two bases "agree to about 1e-14, so results are unchanged" has been removed. It is
+true of the fit and misleading about everything downstream.
+
 # svyrcs 0.6.4
 
 A second independent audit, run as a three-round adversarial exchange rather than a single report.

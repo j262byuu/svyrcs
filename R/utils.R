@@ -140,7 +140,7 @@ pooled_weighted_mean <- function(var, designs) {
 model_variable <- function(fit, var) {
   mf <- stats::model.frame(fit)
   if (!is.null(mf[[var]])) return(mf[[var]])
-  ## When the variable only enters through rcs(), the model frame column is the basis matrix and
+  ## When the variable only enters through rcspline(), the model frame column is the basis matrix and
   ## carries the original values in its first column (which is x itself, unnormalised).
   for (nm in names(mf)) {
     col <- mf[[nm]]

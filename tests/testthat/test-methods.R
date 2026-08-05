@@ -56,7 +56,7 @@ test_that("summary reports no significant range when the band always covers the 
   design <- nhanes_design()
   set.seed(11)
   design$variables$noise_outcome <- rnorm(nrow(design$variables))
-  fit <- svyrcs(noise_outcome ~ rcs(bmi, 4) + age, design = design)
+  fit <- svyrcs(noise_outcome ~ rcspline(bmi, 4) + age, design = design)
   s <- summary(fit)
   if (nrow(s$features$significant) == 0L) {
     expect_output(print(s), "includes")

@@ -19,9 +19,9 @@ svyrcs(
 )
 }
 \arguments{
-\item{formula}{A model formula containing exactly one \code{\link[=rcs]{rcs()}} term for the exposure, plus any
+\item{formula}{A model formula containing exactly one \code{\link[=rcspline]{rcspline()}} term for the exposure, plus any
 covariates. A \code{Surv()} response selects a survey-weighted Cox model; anything else is fitted
-with \code{\link[survey:svyglm]{survey::svyglm()}}. Crossing the spline with a grouping variable, \code{rcs(x, 4) * sex},
+with \code{\link[survey:svyglm]{survey::svyglm()}}. Crossing the spline with a grouping variable, \code{rcspline(x, 4) * sex},
 estimates one curve per group and tests whether they differ; see the section below.}
 
 \item{design}{A survey design object, as built by \code{\link[survey:svydesign]{survey::svydesign()}}. Subset it with
@@ -87,10 +87,10 @@ and the reference value the curve is anchored to.
 }
 \section{Subgroups and effect modification}{
 
-Writing the exposure crossed with a grouping variable, \code{rcs(bmi, 4) * sex}, fits \strong{one} model and
+Writing the exposure crossed with a grouping variable, \code{rcspline(bmi, 4) * sex}, fits \strong{one} model and
 returns one curve per level of the modifier. Because it is a single model, the covariate effects
 are shared across groups and a genuine interaction test is available; fitting each subgroup
-separately gives neither. \code{sex * rcs(bmi, 4)} is equivalent.
+separately gives neither. \code{sex * rcspline(bmi, 4)} is equivalent.
 
 The modifier must be a factor, character or logical variable; ordered factors and other contrast
 codings are handled, because group curves are built from the contrast matrix rather than from
@@ -197,29 +197,29 @@ design <- survey::svydesign(
 )
 
 # continuous outcome: mean difference in total cholesterol across the BMI range
-fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+fit <- svyrcs(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 fit
 
 # survival outcome: all-cause mortality, anchored at the minimum-risk BMI
 \donttest{
 library(survival)
-fit_hr <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex,
+fit_hr <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) + age + sex,
                  design = design, ref = "min")
 summary(fit_hr)
 plot(fit_hr)
 
 # binary outcome: odds of high total cholesterol
-fit_or <- svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
+fit_or <- svyrcs(high_chol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design,
                  family = quasibinomial())
 
 # one curve per subgroup, with a test of whether they differ
-fit_by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+fit_by_sex <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) * sex + age, design = design)
 fit_by_sex$tests$interaction$p_F
 plot(fit_by_sex)
 }
 
 }
 \seealso{
-\code{\link[=svyrcs_curve]{svyrcs_curve()}} for curves from a model you fitted yourself, \code{\link[=rcs]{rcs()}} for the basis,
+\code{\link[=svyrcs_curve]{svyrcs_curve()}} for curves from a model you fitted yourself, \code{\link[=rcspline]{rcspline()}} for the basis,
 \link{references} for reference values.
 }

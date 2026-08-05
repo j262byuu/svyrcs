@@ -10,22 +10,28 @@ Fits and summarises restricted cubic spline (RCS) models for complex survey data
 \section{Getting started}{
 
 Build a survey design with \code{\link[survey:svydesign]{survey::svydesign()}}, then call \code{\link[=svyrcs]{svyrcs()}} with a model formula
-containing one \code{\link[=rcs]{rcs()}} term:
+containing one \code{\link[=rcspline]{rcspline()}} term:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{design <- svydesign(id = ~psu, strata = ~strata, weights = ~weight,
                     nest = TRUE, data = nhanes_bmi)
-fit <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex, design = design)
+fit <- svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age + sex, design = design)
 summary(fit)
 plot(fit)
 }\if{html}{\out{</div>}}
 }
 
-\section{Note on masking}{
+\section{Using this package alongside \code{rms}}{
 
-\code{svyrcs} exports a function called \code{rcs()}, which masks \code{rms::rcs()} when both packages are
-attached. The two produce numerically identical bases (agreement to about 1e-14), so the masking
-does not change any result. It does add knot storage, which is what makes \code{\link[=predict]{predict()}} on new data
-safe. See \code{\link[=rcs]{rcs()}}.
+The spline function here is \code{\link[=rcspline]{rcspline()}}. It was called \code{rcs()} before 0.7.0, which masked
+\code{rms::rcs()} whenever both packages were attached; the name was changed because that masking could
+not be made safe. A \code{cph()}, \code{lrm()} or \code{ols()} model written with a bare \code{rcs()} would silently
+pick up this basis, fit correctly, and then lose the \code{Nonlinear} row from \code{anova()} -- with no
+error and no warning, and that row is usually the reason for fitting a spline at all.
+
+Since the rename there is no collision, and no attach order to remember. Use \code{rms::rcs()} in \code{rms}
+models and \code{\link[=rcspline]{rcspline()}} here. Note that the converse is not symmetric: passing \code{\link[=rcspline]{rcspline()}} into an
+\code{rms} model still fits and still loses the \code{Nonlinear} test, because the basis carries this
+package's knot attributes rather than \code{rms}'s design attributes.
 }
 
 \seealso{

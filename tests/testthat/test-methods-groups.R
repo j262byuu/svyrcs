@@ -2,7 +2,7 @@ grp_fit <- local({
   cached <- NULL
   function() {
     if (is.null(cached)) {
-      cached <<- svyrcs(tchol ~ rcs(bmi, 4) * sex + age, design = nhanes_design())
+      cached <<- svyrcs(tchol ~ rcspline(bmi, 4) * sex + age, design = nhanes_design())
     }
     cached
   }

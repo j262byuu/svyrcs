@@ -14,7 +14,7 @@ harrell_knot_probs <- function(nk) {
 
 #' Knot locations for a restricted cubic spline
 #'
-#' Resolves the `knots` argument of [rcs()] into an explicit, sorted vector of knot locations.
+#' Resolves the `knots` argument of [rcspline()] into an explicit, sorted vector of knot locations.
 #' Exported so that knot placement can be inspected, or computed once and reused across models.
 #'
 #' @param x Numeric vector of exposure values.
@@ -115,7 +115,9 @@ warn_if_knots_crowded <- function(kn, var, tol = 1e-6) {
 ## smallest and fifth largest values, because an extreme quantile of a small sample is an unstable
 ## place to anchor a spline tail.
 ##
-## This reproduces `Hmisc::rcspline.eval()`'s `length(xx) < 100` branch. Interior knots are untouched,
+## This reproduces `Hmisc::rcspline.eval()`'s `length(xx) < 100` branch, except at n = 9 with 4 or 5
+## knots, where the replacements collide with the interior knots: Hmisc silently returns three, we
+## error. Interior knots are untouched,
 ## which is why the two agreed on those all along; only the outer pair moved. Adopted so that the
 ## default placement matches `rms`, not only the basis given identical knots.
 ##
@@ -183,7 +185,7 @@ rcs_design_matrix <- function(x, knots) {
 #' outer knots to
 #' the fifth smallest and fifth largest values below 100 observations. Unlike `rms`, it stores its
 #' knots on the returned object and registers a [stats::makepredictcall()] method, so a model fitted
-#' with `rcs()` reuses exactly the same knots when predicting on new data.
+#' with `rcspline()` reuses exactly the same knots when predicting on new data.
 #'
 #' Because a restricted cubic spline with `k` knots contributes `k - 1` columns, the first of which
 #' is `x` itself, a test that the remaining columns are jointly zero is a test of non-linearity. This
@@ -197,20 +199,30 @@ rcs_design_matrix <- function(x, knots) {
 #' @return A numeric matrix with `length(x)` rows and `k - 1` columns, of class `svyrcs_basis`, with
 #'   attributes `knots` and `nk`.
 #'
-#' @section Masking `rms`:
-#' Attaching `svyrcs` after `rms` masks `rms::rcs()`. The two bases agree to about 1e-14 and the
-#' default knot placement agrees exactly, so results are unchanged; use `rms::rcs()` explicitly if
-#' you want the `rms` version anyway.
+#' @section Relationship to `rms`:
+#' This function used to be called `rcs()`, which masked `rms::rcs()` whenever both packages were
+#' attached. It was renamed in 0.7.0 because masking could not be made safe: an `ols()`, `lrm()` or
+#' `cph()` model written with a bare `rcs()` would pick up this basis, fit correctly, and then lose
+#' the `Nonlinear` row from `anova()` with no error and no warning -- and that row is usually the
+#' reason for fitting a spline at all.
 #'
-#' @seealso [svyrcs()], [rcs_knots()]
+#' With the rename there is no collision. `rcs()` in an `rms` formula is unambiguously `rms::rcs()`.
+#'
+#' The basis itself is Harrell's, and agrees with `rms::rcs()` to about 1e-14 **given the same
+#' knots**. Note the converse still holds: passing `rcspline()` into an `rms` model fits, but the
+#' result is not an `rms` design term, so `anova()` reports no `Nonlinear` row and `Predict()` fails.
+#' Use `rms::rcs()` for `rms` models and `rcspline()` for this package.
+#'
+#' @seealso [svyrcs()], [rcs_knots()], and `rms::rcs()` for `rms` models -- the two are not
+#'   interchangeable in an `rms` formula, see the section above.
 #'
 #' @examples
-#' b <- rcs(nhanes_bmi$bmi, 4)
+#' b <- svyrcs::rcspline(nhanes_bmi$bmi, 4)
 #' dim(b)
 #' attr(b, "knots")
 #'
 #' @export
-rcs <- function(x, knots = 4) {
+rcspline <- function(x, knots = 4) {
   var <- deparse1(substitute(x))
   kn <- rcs_knots(x, knots, var = var)
   B <- rcs_design_matrix(as.numeric(x), kn)
@@ -220,28 +232,28 @@ rcs <- function(x, knots = 4) {
 
 #' Reuse fitted knots when predicting on new data
 #'
-#' [stats::makepredictcall()] method for the basis returned by [rcs()]. It rewrites the `rcs()` call
+#' [stats::makepredictcall()] method for the basis returned by [rcspline()]. It rewrites the `rcspline()` call
 #' stored in a model's terms so that it carries the knot locations chosen at fit time. Without it,
 #' `predict(fit, newdata = ...)` would re-derive knots from the quantiles of `newdata`, silently
 #' evaluating a different spline.
 #'
-#' @param var The fitted basis, as produced by [rcs()].
-#' @param call The call to `rcs()` recorded in the model's terms.
+#' @param var The fitted basis, as produced by [rcspline()].
+#' @param call The call to `rcspline()` recorded in the model's terms.
 #'
 #' @return The call with the fitted knots substituted for whatever `knots` was originally given.
 #'
 #' @examples
-#' fit <- lm(bmi ~ rcs(age, 4), data = nhanes_bmi)
+#' fit <- lm(bmi ~ svyrcs::rcspline(age, 4), data = nhanes_bmi)
 #' # the terms now carry explicit knots rather than "4"
 #' attr(terms(fit), "predvars")
 #'
 #' @export
 makepredictcall.svyrcs_basis <- function(var, call) {
-  ## Match the namespaced forms too. Matching the bare name only meant `lm(y ~ svyrcs::rcs(x, 4))`
+  ## Match the namespaced forms too. Matching the bare name only meant `lm(y ~ svyrcs::rcspline(x, 4))`
   ## recorded the count-based call and re-derived knots from newdata: a model trained on an exposure
   ## of 1-100 predicted a grid near 1000 using knots near 1000. svyrcs() itself was unaffected,
   ## because it inlines the knots before fitting -- which is exactly why the tests missed this.
-  if (!is_call_to(call, "rcs")) return(call)
+  if (!is_call_to(call, "rcspline")) return(call)
   ## Keep element 1 (the possibly-qualified function) and element 2 (x), dropping everything else so
   ## a positional `knots` cannot collide with the one added back.
   out <- call[1L:2L]

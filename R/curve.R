@@ -1,7 +1,7 @@
-## Locate the rcs() term inside a fitted model.
+## Locate the rcspline() term inside a fitted model.
 ##
 ## The knots are read back out of the terms' `predvars`, which makepredictcall.svyrcs_basis() has
-## rewritten to carry explicit locations. That makes this work for any model fitted with rcs() in the
+## rewritten to carry explicit locations. That makes this work for any model fitted with rcspline() in the
 ## formula, whether or not it went through svyrcs().
 find_rcs_term <- function(fit, var = NULL) {
   tt <- stats::terms(fit)
@@ -12,12 +12,12 @@ find_rcs_term <- function(fit, var = NULL) {
   hits <- list()
   for (i in seq_along(vars)[-1L]) {
     v <- vars[[i]]
-    if (!is_call_to(v, "rcs")) next
+    if (!is_call_to(v, "rcspline")) next
     pvi <- pv[[i]]
     knots <- tryCatch(eval(pvi$knots), error = function(e) NULL)
     if (is.null(knots) || length(knots) < 3L) {
-      stop_svyrcs("the fitted model's rcs() term does not carry explicit knots; refit with ",
-                  "svyrcs() or with svyrcs::rcs() so that the knots are recorded")
+      stop_svyrcs("the fitted model's rcspline() term does not carry explicit knots; refit with ",
+                  "svyrcs() or with svyrcs::rcspline() so that the knots are recorded")
     }
     hits[[length(hits) + 1L]] <- list(
       label = deparse1(v),
@@ -28,19 +28,19 @@ find_rcs_term <- function(fit, var = NULL) {
   }
 
   if (!length(hits)) {
-    stop_svyrcs("no rcs() term found in the model formula; the exposure must enter the model as, ",
-                "for example, rcs(bmi, 4)")
+    stop_svyrcs("no rcspline() term found in the model formula; the exposure must enter the model as, ",
+                "for example, rcspline(bmi, 4)")
   }
   if (!is.null(var)) {
     keep <- vapply(hits, function(h) identical(h$var, var), logical(1L))
     if (!any(keep)) {
-      stop_svyrcs("no rcs() term for '", var, "' in the model; found: ",
+      stop_svyrcs("no rcspline() term for '", var, "' in the model; found: ",
                   paste(vapply(hits, `[[`, character(1L), "var"), collapse = ", "))
     }
     hits <- hits[keep]
   }
   if (length(hits) > 1L) {
-    stop_svyrcs("the model has ", length(hits), " rcs() terms (",
+    stop_svyrcs("the model has ", length(hits), " rcspline() terms (",
                 paste(vapply(hits, `[[`, character(1L), "var"), collapse = ", "),
                 "); pass `var` to choose one")
   }
@@ -62,7 +62,7 @@ spline_coef_index <- function(fit, term) {
   if (anyNA(idx)) {
     stop_svyrcs("could not find the spline coefficients for '", term$var, "' in the fitted model; ",
                 "expected ", paste(sQuote(want[is.na(idx)]), collapse = ", "), ". If the spline is ",
-                "interacted with a modifier, write rcs(", term$var, ", k) * m so that the main ",
+                "interacted with a modifier, write rcspline(", term$var, ", k) * m so that the main ",
                 "effects are estimated too.")
   }
   idx
@@ -179,7 +179,7 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate,
 
 #' Exposure-response curve from a fitted survey model
 #'
-#' Estimates the exposure-response curve implied by an `rcs()` term in an already-fitted survey
+#' Estimates the exposure-response curve implied by an `rcspline()` term in an already-fitted survey
 #' model, as a contrast against a reference exposure value. [svyrcs()] calls this internally; use it
 #' directly when you have fitted the model yourself, for instance because you need a model
 #' specification `svyrcs()` does not build for you.
@@ -188,9 +188,9 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate,
 #' `x` and at the reference, so covariate contributions cancel exactly and no covariate reference
 #' grid is needed. Confidence intervals use a *t* quantile on the survey degrees of freedom.
 #'
-#' @param fit A fitted model containing an [rcs()] term, typically from [survey::svycoxph()] or
+#' @param fit A fitted model containing an [rcspline()] term, typically from [survey::svycoxph()] or
 #'   [survey::svyglm()]. Any model with `coef()`, `vcov()` and `terms()` methods works.
-#' @param var Name of the exposure. Only needed when the model contains more than one `rcs()` term.
+#' @param var Name of the exposure. Only needed when the model contains more than one `rcspline()` term.
 #' @param ref Reference value: a number, or one of `"median"`, `"mean"`, `"quantile"`, `"min"`
 #'   (minimum-risk point) or `"max"` (maximum-risk point). See [svyrcs()].
 #' @param ref_prob Probability used when `ref = "quantile"`.
@@ -222,7 +222,7 @@ contrast_estimates <- function(x, x0, knots, beta, V, degf, level, exponentiate,
 #'   id = ~psu, strata = ~strata, weights = ~weight,
 #'   nest = TRUE, data = nhanes_bmi
 #' )
-#' fit <- survey::svyglm(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+#' fit <- survey::svyglm(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 #' curve <- svyrcs_curve(fit, "bmi", n = 20)
 #' head(curve)
 #'

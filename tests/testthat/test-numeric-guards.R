@@ -48,7 +48,7 @@ test_that("a non-finite variance is reported as a variance problem, not a conver
   skip_if_not_installed("survey")
   des <- nan_vcov_design()
 
-  w <- capture_warnings(fit <- svyrcs(tchol ~ rcs(bmi, 5) + age, design = des, n = 20))
+  w <- capture_warnings(fit <- svyrcs(tchol ~ rcspline(bmi, 5) + age, design = des, n = 20))
 
   expect_true(all(is.finite(fit$curve$estimate)))
   expect_true(all(is.na(fit$curve$se)))
@@ -60,10 +60,10 @@ test_that("a non-finite variance is reported as a variance problem, not a conver
 test_that("an unavailable test says which of its causes applies", {
   skip_if_not_installed("survey")
   des <- nan_vcov_design()
-  suppressWarnings(fit <- svyrcs(tchol ~ rcs(bmi, 5) + age, design = des, n = 5))
+  suppressWarnings(fit <- svyrcs(tchol ~ rcspline(bmi, 5) + age, design = des, n = 5))
 
   ## four spline columns are in the model, so "a linear term only" would be plainly false
-  expect_equal(length(grep("rcs\\(", names(coef(fit$model)))), 4L)
+  expect_equal(length(grep("rcspline\\(", names(coef(fit$model)))), 4L)
   expect_false(all(is.finite(vcov(fit$model))))
 
   out <- capture.output(print(fit))

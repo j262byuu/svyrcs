@@ -71,11 +71,11 @@ PSUs in 31 strata, and the intervals have to reflect that.
 
 ## A first model
 
-One call. The exposure enters through `rcs()`; everything else is an ordinary model formula.
+One call. The exposure enters through `rcspline()`; everything else is an ordinary model formula.
 
 ```{r fit}
 fit <- svyrcs(
-  Surv(time, event) ~ rcs(bmi, 4) + age + sex + race,
+  Surv(time, event) ~ rcspline(bmi, 4) + age + sex + race,
   design = design
 )
 fit
@@ -136,7 +136,7 @@ value. `svyrcs` supports the choices seen in the literature, and the choice is p
 ```{r refs}
 fits <- lapply(
   c("median", "min", "max"),
-  function(r) svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex,
+  function(r) svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age + sex,
                      design = design, ref = r)
 )
 vapply(fits, function(f) f$ref$value, numeric(1))
@@ -161,11 +161,11 @@ The effect measure follows from the model, so nothing about the workflow changes
 
 ```{r families}
 # binary outcome: odds ratio
-svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
+svyrcs(high_chol ~ rcspline(bmi, 4) + age + sex, design = design,
        family = quasibinomial())
 
 # continuous outcome: mean difference
-svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+svyrcs(tchol ~ rcspline(bmi, 4) + age + sex, design = design)
 ```
 
 Use `quasipoisson()` for rates, which gives rate ratios. The quasi- families are the right choice
@@ -178,7 +178,7 @@ Cross the spline with a grouping variable and `svyrcs()` fits **one** model, ret
 group:
 
 ```{r subgroup}
-by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+by_sex <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) * sex + age, design = design)
 by_sex
 ```
 
@@ -239,7 +239,7 @@ mi_design <- svydesign(
   nest = TRUE, data = imputationList(completed)
 )
 
-fit_mi <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex + tchol, design = mi_design)
+fit_mi <- svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age + sex + tchol, design = mi_design)
 fit_mi
 ```
 
@@ -292,8 +292,8 @@ sample sizes. More knots buy flexibility at the cost of stability.
 
 ```{r knots}
 fit$knots
-svyrcs(Surv(time, event) ~ rcs(bmi, 5) + age, design = design)$knots
-svyrcs(Surv(time, event) ~ rcs(bmi, c(20, 25, 30, 40)) + age, design = design)$knots
+svyrcs(Surv(time, event) ~ rcspline(bmi, 5) + age, design = design)$knots
+svyrcs(Surv(time, event) ~ rcspline(bmi, c(20, 25, 30, 40)) + age, design = design)$knots
 ```
 
 By default the quantiles are **survey-weighted**, so knot placement reflects the population
@@ -314,7 +314,7 @@ If you need a specification `svyrcs()` does not build — a stratified Cox model
 extra arguments — fit it yourself and hand it over:
 
 ```{r curve-direct}
-m <- svycoxph(Surv(time, event) ~ rcs(bmi, 4) + age + strata(sex), design = design)
+m <- svycoxph(Surv(time, event) ~ rcspline(bmi, 4) + age + strata(sex), design = design)
 head(svyrcs_curve(m, "bmi", ref = "min", n = 5))
 ```
 

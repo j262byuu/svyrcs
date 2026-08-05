@@ -2,11 +2,11 @@ test_that("all four model families work on an imputed design", {
   skip_if_not_installed("survival")
   designs <- mi_design()
   cases <- list(
-    list(f = survival::Surv(time, event) ~ rcs(bmi, 4) + age + tchol, family = NULL,
+    list(f = survival::Surv(time, event) ~ rcspline(bmi, 4) + age + tchol, family = NULL,
          measure = "HR"),
-    list(f = bmi ~ rcs(age, 4) + sex + tchol, family = NULL, measure = "Difference"),
-    list(f = high_chol ~ rcs(bmi, 4) + age + hdl, family = quasibinomial(), measure = "OR"),
-    list(f = statin_use ~ rcs(bmi, 4) + age + tchol, family = quasipoisson(),
+    list(f = bmi ~ rcspline(age, 4) + sex + tchol, family = NULL, measure = "Difference"),
+    list(f = high_chol ~ rcspline(bmi, 4) + age + hdl, family = quasibinomial(), measure = "OR"),
+    list(f = statin_use ~ rcspline(bmi, 4) + age + tchol, family = quasipoisson(),
          measure = "Mean ratio")
   )
   for (cs in cases) {
@@ -20,7 +20,7 @@ test_that("all four model families work on an imputed design", {
 })
 
 test_that("the interaction form works under imputation", {
-  fit <- svyrcs(bmi ~ rcs(age, 4) * sex + tchol, design = mi_design())
+  fit <- svyrcs(bmi ~ rcspline(age, 4) * sex + tchol, design = mi_design())
   expect_equal(fit$groups$var, "sex")
   expect_equal(nrow(fit$curve), 400L)
   expect_true(all(c("df", "fmi") %in% names(fit$curve)))
@@ -34,7 +34,7 @@ test_that("the interaction form works under imputation", {
 
 test_that("knots are the average of the per-imputation weighted quantiles", {
   designs <- mi_design()
-  fit <- svyrcs(bmi ~ rcs(tchol, 4) + age, design = designs)
+  fit <- svyrcs(bmi ~ rcspline(tchol, 4) + age, design = designs)
 
   each <- vapply(designs$designs, function(d) {
     as.numeric(coef(survey::svyquantile(~tchol, d, c(0.05, 0.35, 0.65, 0.95),
@@ -50,7 +50,7 @@ test_that("knots are the average of the per-imputation weighted quantiles", {
 
 test_that("the reference is pooled across imputations", {
   designs <- mi_design()
-  fit <- svyrcs(bmi ~ rcs(tchol, 4) + age, design = designs)
+  fit <- svyrcs(bmi ~ rcspline(tchol, 4) + age, design = designs)
   each <- vapply(designs$designs, function(d) {
     as.numeric(coef(survey::svyquantile(~tchol, d, 0.5, na.rm = TRUE, ci = FALSE)))
   }, numeric(1))
@@ -59,8 +59,8 @@ test_that("the reference is pooled across imputations", {
 })
 
 test_that("with nothing imputed the estimates reproduce the complete-data fit exactly", {
-  plain <- svyrcs(bmi ~ rcs(age, 4) + sex, design = nhanes_design())
-  imputed <- suppressWarnings(svyrcs(bmi ~ rcs(age, 4) + sex, design = mi_design_degenerate()))
+  plain <- svyrcs(bmi ~ rcspline(age, 4) + sex, design = nhanes_design())
+  imputed <- suppressWarnings(svyrcs(bmi ~ rcspline(age, 4) + sex, design = mi_design_degenerate()))
 
   expect_equal(imputed$knots, plain$knots)
   expect_equal(imputed$ref$value, plain$ref$value)
@@ -87,7 +87,7 @@ test_that("with nothing imputed the estimates reproduce the complete-data fit ex
 })
 
 test_that("predict works on an imputed fit and carries the df through", {
-  fit <- svyrcs(bmi ~ rcs(age, 4) + sex + tchol, design = mi_design())
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + sex + tchol, design = mi_design())
   p <- predict(fit, x = c(30, 50, 70))
   expect_equal(nrow(p), 3L)
   expect_true(all(c("df", "fmi") %in% names(p)))
@@ -97,7 +97,7 @@ test_that("predict works on an imputed fit and carries the df through", {
 
 test_that("a subset of the imputed design keeps its own degrees of freedom", {
   sub <- subset(mi_design(), cycle == "2005-2006")
-  fit <- svyrcs(bmi ~ rcs(age, 4) + sex + tchol, design = sub)
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + sex + tchol, design = sub)
   expect_equal(fit$degf, survey::degf(sub$designs[[1]]))
   expect_lt(fit$degf, survey::degf(mi_design()$designs[[1]]))
 })
@@ -105,14 +105,14 @@ test_that("a subset of the imputed design keeps its own degrees of freedom", {
 test_that("malformed imputed designs are rejected", {
   one <- survey::svydesign(id = ~psu, strata = ~strata, weights = ~weight, nest = TRUE,
                            data = mitools::imputationList(list(nhanes_bmi)))
-  expect_error(svyrcs(bmi ~ rcs(age, 4), design = one), class = "svyrcs_error")
-  expect_error(svyrcs(bmi ~ rcs(age, 4), design = mitools::imputationList(list(nhanes_bmi))),
+  expect_error(svyrcs(bmi ~ rcspline(age, 4), design = one), class = "svyrcs_error")
+  expect_error(svyrcs(bmi ~ rcspline(age, 4), design = mitools::imputationList(list(nhanes_bmi))),
                class = "svyrcs_error")
-  expect_error(svyrcs(bmi ~ rcs(nosuchvar, 4), design = mi_design()), class = "svyrcs_error")
+  expect_error(svyrcs(bmi ~ rcspline(nosuchvar, 4), design = mi_design()), class = "svyrcs_error")
 })
 
 test_that("the pooled model is inspectable but refuses to predict", {
-  fit <- svyrcs(bmi ~ rcs(age, 4) + sex + tchol, design = mi_design())
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + sex + tchol, design = mi_design())
   expect_s3_class(fit$model, "svyrcs_mifit")
   expect_length(fit$model$fits, 5L)
   expect_s3_class(fit$model$fits[[1]], "svyglm")
@@ -121,7 +121,7 @@ test_that("the pooled model is inspectable but refuses to predict", {
 })
 
 test_that("print reports the imputation count and the fraction of missing information", {
-  fit <- svyrcs(bmi ~ rcs(age, 4) + sex + tchol, design = mi_design())
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + sex + tchol, design = mi_design())
   out <- capture.output(print(fit))
   expect_true(any(grepl("Imputed    m = 5", out)))
   expect_true(any(grepl("fraction of missing information", out)))
@@ -138,7 +138,7 @@ test_that("an ordinary fit says nothing about imputation", {
 
 test_that("summary and plot work on an imputed fit", {
   skip_if_not_installed("ggplot2")
-  fit <- svyrcs(bmi ~ rcs(age, 4) + sex + tchol, design = mi_design())
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + sex + tchol, design = mi_design())
   expect_output(print(summary(fit)), "Curve shape")
   p <- ggplot2::autoplot(fit)
   expect_s3_class(p, "ggplot")

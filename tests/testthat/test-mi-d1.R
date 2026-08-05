@@ -28,7 +28,7 @@ test_that("d1_test agrees with mitml across m and block size", {
       id = ~psu, strata = ~strata, weights = ~weight, nest = TRUE,
       data = mitools::imputationList(deterministic_imputations(m, seed = 3))
     )
-    fit <- svyrcs(bmi ~ rcs(age, 4) + tchol + hdl, design = des, n = 5)
+    fit <- svyrcs(bmi ~ rcspline(age, 4) + tchol + hdl, design = des, n = 5)
     term <- find_rcs_term(fit$model)
     cols <- spline_colnames(term$label, term$nk)
 
@@ -53,7 +53,7 @@ test_that("the reported joint tests are the D1 numbers", {
     id = ~psu, strata = ~strata, weights = ~weight, nest = TRUE,
     data = mitools::imputationList(deterministic_imputations(5, seed = 4))
   )
-  fit <- svyrcs(bmi ~ rcs(age, 4) + tchol, design = des, n = 5)
+  fit <- svyrcs(bmi ~ rcspline(age, 4) + tchol, design = des, n = 5)
   term <- find_rcs_term(fit$model)
   cols <- spline_colnames(term$label, term$nk)
 
@@ -73,7 +73,7 @@ test_that("the interaction block goes through D1 too", {
     id = ~psu, strata = ~strata, weights = ~weight, nest = TRUE,
     data = mitools::imputationList(deterministic_imputations(5, seed = 5))
   )
-  fit <- svyrcs(bmi ~ rcs(age, 4) * sex + tchol, design = des, n = 5)
+  fit <- svyrcs(bmi ~ rcspline(age, 4) * sex + tchol, design = des, n = 5)
   m <- find_modifier(fit$model, find_rcs_term(fit$model))
   icols <- unlist(m$columns, use.names = FALSE)
 
@@ -89,9 +89,9 @@ test_that("df reaches the imputation arithmetic", {
     id = ~psu, strata = ~strata, weights = ~weight, nest = TRUE,
     data = mitools::imputationList(deterministic_imputations(5, seed = 6))
   )
-  base <- svyrcs(bmi ~ rcs(age, 4) + tchol, design = des, n = 5)
-  small <- svyrcs(bmi ~ rcs(age, 4) + tchol, design = des, n = 5, df = 10)
-  big <- svyrcs(bmi ~ rcs(age, 4) + tchol, design = des, n = 5, df = Inf)
+  base <- svyrcs(bmi ~ rcspline(age, 4) + tchol, design = des, n = 5)
+  small <- svyrcs(bmi ~ rcspline(age, 4) + tchol, design = des, n = 5, df = 10)
+  big <- svyrcs(bmi ~ rcspline(age, 4) + tchol, design = des, n = 5, df = Inf)
 
   expect_lt(small$tests$overall$df2, base$tests$overall$df2)
   expect_gt(big$tests$overall$df2, base$tests$overall$df2)

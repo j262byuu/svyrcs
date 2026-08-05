@@ -40,27 +40,27 @@ test_that("knot probabilities are computed, not tabulated", {
 })
 
 test_that("non-finite knots are refused", {
-  expect_error(rcs(1:20, c(1, 2, Inf)), class = "svyrcs_error")
-  expect_error(rcs(1:20, c(1, NaN, 3)), class = "svyrcs_error")
-  expect_error(rcs(1:20, c(-Inf, 2, 3)), class = "svyrcs_error")
-  expect_error(rcs(1:20, Inf), class = "svyrcs_error")
-  expect_error(rcs(1:20, NA), class = "svyrcs_error")
-  expect_error(rcs(1:20, NaN), class = "svyrcs_error")
+  expect_error(rcspline(1:20, c(1, 2, Inf)), class = "svyrcs_error")
+  expect_error(rcspline(1:20, c(1, NaN, 3)), class = "svyrcs_error")
+  expect_error(rcspline(1:20, c(-Inf, 2, 3)), class = "svyrcs_error")
+  expect_error(rcspline(1:20, Inf), class = "svyrcs_error")
+  expect_error(rcspline(1:20, NA), class = "svyrcs_error")
+  expect_error(rcspline(1:20, NaN), class = "svyrcs_error")
 
   ## and the message names finiteness rather than blaming something else
-  expect_error(rcs(1:20, c(1, 2, Inf)), "finite")
+  expect_error(rcspline(1:20, c(1, 2, Inf)), "finite")
 })
 
 test_that("range and at are validated", {
   des <- nhanes_design()
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = des, n = 5)
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) + age, design = des, n = 5)
 
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = des, range = 30), class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = des, range = c(NA, 40)),
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = des, range = 30), class = "svyrcs_error")
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = des, range = c(NA, 40)),
                class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = des, range = c(20, Inf)),
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = des, range = c(20, Inf)),
                class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = des, range = c(30, 30)),
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = des, range = c(30, 30)),
                class = "svyrcs_error")
 
   expect_error(predict(fit, x = c(30, NA)), class = "svyrcs_error")
@@ -68,17 +68,17 @@ test_that("range and at are validated", {
   expect_error(predict(fit, x = c(30, NaN)), class = "svyrcs_error")
 
   ## a reversed range is accepted and sorted, which is harmless
-  rev <- svyrcs(tchol ~ rcs(bmi, 4), design = des, range = c(40, 20), n = 5)
+  rev <- svyrcs(tchol ~ rcspline(bmi, 4), design = des, range = c(40, 20), n = 5)
   expect_equal(range(rev$curve$x), c(20, 40))
 })
 
 test_that("level and ref_prob validation is unchanged", {
   ## The review claimed `level = NA` raised an untyped error. It does not, and this pins that.
   des <- nhanes_design()
-  fit <- svyrcs(tchol ~ rcs(bmi, 4) + age, design = des, n = 5)
+  fit <- svyrcs(tchol ~ rcspline(bmi, 4) + age, design = des, n = 5)
   expect_error(predict(fit, x = 30, level = NA), class = "svyrcs_error")
   expect_error(predict(fit, x = 30, level = 1.5), class = "svyrcs_error")
-  expect_error(svyrcs(tchol ~ rcs(bmi, 4), design = des, ref = "quantile", ref_prob = NA),
+  expect_error(svyrcs(tchol ~ rcspline(bmi, 4), design = des, ref = "quantile", ref_prob = NA),
                class = "svyrcs_error")
 })
 
@@ -87,18 +87,18 @@ test_that("a log link is labelled by what the family estimates", {
   des$variables$py <- pmax(nhanes_bmi$time, 0.1)
 
   ## binomial: the fitted mean is a probability, so the contrast is a risk ratio however it is offset
-  binom <- suppressWarnings(svyrcs(high_chol ~ rcs(bmi, 4) + age, design = des,
+  binom <- suppressWarnings(svyrcs(high_chol ~ rcspline(bmi, 4) + age, design = des,
                                    family = quasibinomial(link = "log"), n = 5))
   expect_equal(binom$measure, "RR")
 
   ## count family: person-time makes it a rate, its absence makes it a ratio of expected counts
-  expect_equal(svyrcs(event ~ rcs(bmi, 4) + age + offset(log(py)), design = des,
+  expect_equal(svyrcs(event ~ rcspline(bmi, 4) + age + offset(log(py)), design = des,
                       family = quasipoisson(), n = 5)$measure, "Rate ratio")
-  expect_equal(svyrcs(statin_use ~ rcs(bmi, 4) + age, design = des,
+  expect_equal(svyrcs(statin_use ~ rcspline(bmi, 4) + age, design = des,
                       family = quasipoisson(), n = 5)$measure, "Mean ratio")
 
   ## anything else is just a ratio
-  expect_equal(svyrcs(tchol ~ rcs(bmi, 4) + age, design = des,
+  expect_equal(svyrcs(tchol ~ rcspline(bmi, 4) + age, design = des,
                       family = gaussian(link = "log"), n = 5)$measure, "Ratio")
 })
 
@@ -111,15 +111,15 @@ test_that("every supported family produces a documented measure", {
   skip_if_not_installed("survival")
 
   fits <- list(
-    svyrcs(survival::Surv(time, event) ~ rcs(bmi, 4) + age, design = des, n = 5),
-    svyrcs(high_chol ~ rcs(bmi, 4) + age, design = des, family = quasibinomial(), n = 5),
-    suppressWarnings(svyrcs(high_chol ~ rcs(bmi, 4) + age, design = des,
+    svyrcs(survival::Surv(time, event) ~ rcspline(bmi, 4) + age, design = des, n = 5),
+    svyrcs(high_chol ~ rcspline(bmi, 4) + age, design = des, family = quasibinomial(), n = 5),
+    suppressWarnings(svyrcs(high_chol ~ rcspline(bmi, 4) + age, design = des,
                             family = quasibinomial(link = "log"), n = 5)),
-    svyrcs(event ~ rcs(bmi, 4) + age + offset(log(py)), design = des,
+    svyrcs(event ~ rcspline(bmi, 4) + age + offset(log(py)), design = des,
            family = quasipoisson(), n = 5),
-    svyrcs(statin_use ~ rcs(bmi, 4) + age, design = des, family = quasipoisson(), n = 5),
-    svyrcs(tchol ~ rcs(bmi, 4) + age, design = des, family = gaussian(link = "log"), n = 5),
-    svyrcs(tchol ~ rcs(bmi, 4) + age, design = des, n = 5)
+    svyrcs(statin_use ~ rcspline(bmi, 4) + age, design = des, family = quasipoisson(), n = 5),
+    svyrcs(tchol ~ rcspline(bmi, 4) + age, design = des, family = gaussian(link = "log"), n = 5),
+    svyrcs(tchol ~ rcspline(bmi, 4) + age, design = des, n = 5)
   )
   measures <- vapply(fits, function(f) f$measure, character(1L))
   expect_true(all(measures %in% documented), info = paste(measures, collapse = ", "))
