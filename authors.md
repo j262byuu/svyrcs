@@ -10,13 +10,13 @@ Source:
 [`inst/CITATION`](https://github.com/j262byuu/svyrcs/blob/main/inst/CITATION)
 
 Zong X (2026). svyrcs: Restricted Cubic Splines for Complex Survey Data.
-R package version 0.6.3. https://github.com/j262byuu/svyrcs
+R package version 0.6.4. https://github.com/j262byuu/svyrcs
 
     @Manual{,
       title = {{svyrcs}: Restricted Cubic Splines for Complex Survey Data},
       author = {Xiaoyu Zong},
       year = {2026},
-      note = {R package version 0.6.3},
+      note = {R package version 0.6.4},
       url = {https://github.com/j262byuu/svyrcs},
     }
 

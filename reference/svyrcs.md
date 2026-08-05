@@ -78,6 +78,14 @@ svyrcs(
   `FALSE` for unweighted quantiles. Explicit knot locations are always
   used as given.
 
+  Below 100 analytic observations the two differ in kind, not just in
+  weighting. Harrell's rule puts the outer knots at the fifth smallest
+  and fifth largest *values*, which is defined on an unweighted sample
+  and has no published weighted equivalent, so `weighted_knots = TRUE`
+  uses the plain weighted 5th and 95th percentiles instead and warns.
+  `weighted_knots = FALSE` applies the rule and reproduces
+  [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) exactly.
+
 - n:
 
   Number of points on the estimated curve.
