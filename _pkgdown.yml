@@ -19,7 +19,7 @@ reference:
   - title: The spline basis
     desc: Building and inspecting the restricted cubic spline basis.
     contents:
-      - rcs
+      - rcspline
       - rcs_knots
       - makepredictcall.svyrcs_basis
 
