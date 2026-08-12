@@ -13,7 +13,7 @@ are drawn on a linear axis."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -145,7 +145,7 @@ that this package cannot re-export the generic, so <code>autoplot(fit)</code> ne
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># n = 50 rather than the default 200: the example draws the same curve and keeps well inside</span></span></span>
 <span class="r-in"><span><span class="co"># CRAN's five-second budget for a single example.</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="va">tchol</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span>, n <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="va">tchol</span> <span class="op">~</span> <span class="fu">svyrcs</span><span class="fu">::</span><span class="fu"><a href="rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span>, n <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># works with or without ggplot2 installed</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>

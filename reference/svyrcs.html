@@ -11,7 +11,7 @@ and the reference value the curve is anchored to."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -67,9 +67,9 @@ and the reference value the curve is anchored to.</p>
 
 
 <dl><dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
-<dd><p>A model formula containing exactly one <code><a href="rcs.html">rcs()</a></code> term for the exposure, plus any
+<dd><p>A model formula containing exactly one <code><a href="rcspline.html">rcspline()</a></code> term for the exposure, plus any
 covariates. A <code><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv()</a></code> response selects a survey-weighted Cox model; anything else is fitted
-with <code><a href="https://rdrr.io/pkg/survey/man/svyglm.html" class="external-link">survey::svyglm()</a></code>. Crossing the spline with a grouping variable, <code>rcs(x, 4) * sex</code>,
+with <code><a href="https://rdrr.io/pkg/survey/man/svyglm.html" class="external-link">survey::svyglm()</a></code>. Crossing the spline with a grouping variable, <code>rcspline(x, 4) * sex</code>,
 estimates one curve per group and tests whether they differ; see the section below.</p></dd>
 
 
@@ -165,10 +165,10 @@ link on a count family without one), <code>"Ratio"</code> (log link on any other
     <h2 id="subgroups-and-effect-modification">Subgroups and effect modification<a class="anchor" aria-label="anchor" href="#subgroups-and-effect-modification"></a></h2>
 
 
-<p>Writing the exposure crossed with a grouping variable, <code>rcs(bmi, 4) * sex</code>, fits <strong>one</strong> model and
+<p>Writing the exposure crossed with a grouping variable, <code>rcspline(bmi, 4) * sex</code>, fits <strong>one</strong> model and
 returns one curve per level of the modifier. Because it is a single model, the covariate effects
 are shared across groups and a genuine interaction test is available; fitting each subgroup
-separately gives neither. <code>sex * rcs(bmi, 4)</code> is equivalent.</p>
+separately gives neither. <code>sex * rcspline(bmi, 4)</code> is equivalent.</p>
 <p>The modifier must be a factor, character or logical variable; ordered factors and other contrast
 codings are handled, because group curves are built from the contrast matrix rather than from
 level names. Two extra tests are then reported:</p><dl><dt>Interaction</dt>
@@ -267,7 +267,7 @@ design, replicate-weight variance for a replicate design.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="svyrcs_curve.html">svyrcs_curve()</a></code> for curves from a model you fitted yourself, <code><a href="rcs.html">rcs()</a></code> for the basis,
+    <div class="dont-index"><p><code><a href="svyrcs_curve.html">svyrcs_curve()</a></code> for curves from a model you fitted yourself, <code><a href="rcspline.html">rcspline()</a></code> for the basis,
 <a href="references.html">references</a> for reference values.</p></div>
     </div>
 
@@ -279,7 +279,7 @@ design, replicate-weight variance for a replicate design.</p>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># continuous outcome: mean difference in total cholesterol across the BMI range</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="va">tchol</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="va">tchol</span> <span class="op">~</span> <span class="fu">svyrcs</span><span class="fu">::</span><span class="fu"><a href="rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">fit</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Restricted cubic spline on a complex survey design</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -296,7 +296,7 @@ design, replicate-weight variance for a replicate design.</p>
 <span class="r-in"><span><span class="co"># survival outcome: all-cause mortality, anchored at the minimum-risk BMI</span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/therneau/survival" class="external-link">survival</a></span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">fit_hr</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>,</span></span>
+<span class="r-in"><span><span class="va">fit_hr</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu">svyrcs</span><span class="fu">::</span><span class="fu"><a href="rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>,</span></span>
 <span class="r-in"><span>                 design <span class="op">=</span> <span class="va">design</span>, ref <span class="op">=</span> <span class="st">"min"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_hr</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Restricted cubic spline on a complex survey design</span>
@@ -321,11 +321,11 @@ design, replicate-weight variance for a replicate design.</p>
 <span class="r-plt img"><img src="svyrcs-1.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># binary outcome: odds of high total cholesterol</span></span></span>
-<span class="r-in"><span><span class="va">fit_or</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="va">high_chol</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span>,</span></span>
+<span class="r-in"><span><span class="va">fit_or</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="va">high_chol</span> <span class="op">~</span> <span class="fu">svyrcs</span><span class="fu">::</span><span class="fu"><a href="rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span>,</span></span>
 <span class="r-in"><span>                 family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">quasibinomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># one curve per subgroup, with a test of whether they differ</span></span></span>
-<span class="r-in"><span><span class="va">fit_by_sex</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">*</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit_by_sex</span> <span class="op">&lt;-</span> <span class="fu">svyrcs</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu">svyrcs</span><span class="fu">::</span><span class="fu"><a href="rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">*</span> <span class="va">sex</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">fit_by_sex</span><span class="op">$</span><span class="va">tests</span><span class="op">$</span><span class="va">interaction</span><span class="op">$</span><span class="va">p_F</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.4796278</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit_by_sex</span><span class="op">)</span></span></span>

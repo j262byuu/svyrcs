@@ -11,7 +11,7 @@ band excludes the null."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -88,7 +88,7 @@ can move a little if <code>n</code> changes.</p>
 <span class="r-in"><span>  id <span class="op">=</span> <span class="op">~</span><span class="va">psu</span>, strata <span class="op">=</span> <span class="op">~</span><span class="va">strata</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">weight</span>,</span></span>
 <span class="r-in"><span>  nest <span class="op">=</span> <span class="cn">TRUE</span>, data <span class="op">=</span> <span class="va">nhanes_bmi</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="va">tchol</span> <span class="op">~</span> <span class="fu"><a href="rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="va">tchol</span> <span class="op">~</span> <span class="fu">svyrcs</span><span class="fu">::</span><span class="fu"><a href="rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Restricted cubic spline on a complex survey design</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

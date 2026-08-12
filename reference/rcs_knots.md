@@ -1,8 +1,8 @@
 # Knot locations for a restricted cubic spline
 
 Resolves the `knots` argument of
-[`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) into an
-explicit, sorted vector of knot locations. Exported so that knot
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+into an explicit, sorted vector of knot locations. Exported so that knot
 placement can be inspected, or computed once and reused across models.
 
 ## Usage

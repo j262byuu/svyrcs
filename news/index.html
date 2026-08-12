@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,6 +34,33 @@
       <small>Source: <a href="https://github.com/j262byuu/svyrcs/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.7.0" id="svyrcs-070">svyrcs 0.7.0<a class="anchor" aria-label="anchor" href="#svyrcs-070"></a></h2>
+<div class="section level3">
+<h3 id="breaking-rcs-is-now-rcspline-0-7-0">Breaking: <code>rcs()</code> is now <code>rcspline()</code>
+<a class="anchor" aria-label="anchor" href="#breaking-rcs-is-now-rcspline-0-7-0"></a></h3>
+<p>The spline function has been renamed. <strong>Every formula must be updated</strong>; the old name raises an error that says so.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span>   <span class="co"># was rcs(bmi, 4)</span></span></code></pre></div>
+<p><code>rcs()</code> collided with <code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code>, and R resolves that by masking whichever package was attached first. The collision could not be made safe, and the reason is worth stating because it is not the obvious one:</p>
+<ul><li>A <code>cph()</code>, <code>lrm()</code> or <code>ols()</code> model written with a bare <code>rcs()</code> while <code>svyrcs</code> was attached picked up <strong>this</strong> basis. It fitted correctly – coefficients and fitted values identical to <code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code> to 1e-16 – and then <strong>silently lost the <code>Nonlinear</code> row from <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code></strong>. That row is usually the reason for fitting a spline at all. No error, no warning, and the only visible sign was in <code>print(fit)</code>, which a user working from <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code> never sees.</li>
+<li>
+<code><a href="https://rdrr.io/pkg/rms/man/Predict.html" class="external-link">rms::Predict()</a></code> failed outright on such a model, which pushes a user further toward reading <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code> alone.</li>
+<li>Two spline terms in one <code>rms</code> model produced duplicate column names and were rejected by <code><a href="https://rdrr.io/pkg/rms/man/rms.html" class="external-link">rms::Design()</a></code> – so nothing was ever misattributed, but the safety was upstream, not ours, and the error message blamed factor levels.</li>
+<li>In the other direction, attaching <code>rms</code> after <code>svyrcs</code> made every <code><a href="../reference/svyrcs.html">svyrcs()</a></code> call fail with a message telling the user to refit with <code><a href="../reference/svyrcs.html">svyrcs()</a></code>, which is what they were doing.</li>
+</ul><p>Documenting an attach order was considered and rejected: a convention only protects people who already know about the conflict, and the people at risk are the ones writing a bare <code>rcs()</code> because that is what Harrell’s book, the <code>rms</code> vignettes and every existing script use.</p>
+<p>Renaming now costs nothing – the package is not on CRAN and has no downstream users. After acceptance it would be a breaking change requiring a deprecation cycle.</p>
+<p><code><a href="../reference/rcspline.html">rcspline()</a></code> in an <code>rms</code> model still fits and still loses the <code>Nonlinear</code> test, because the basis carries this package’s knot attributes rather than <code>rms</code>’s design attributes. That is documented in <code><a href="../reference/rcspline.html">?rcspline</a></code> and pinned by a test, so a change in either package’s behaviour surfaces rather than drifts. Making it fail loudly instead is under evaluation.</p>
+</div>
+<div class="section level3">
+<h3 id="knot-placement-equivalence-stated-precisely-0-7-0">Knot-placement equivalence, stated precisely<a class="anchor" aria-label="anchor" href="#knot-placement-equivalence-stated-precisely-0-7-0"></a></h3>
+<p><code><a href="../reference/rcs_knots.html">rcs_knots()</a></code> reproduces <code><a href="https://rdrr.io/pkg/Hmisc/man/rcspline.eval.html" class="external-link">Hmisc::rcspline.eval()</a></code> – with limits now written down rather than implied:</p>
+<ul><li>only when <code>weighted_knots = FALSE</code>, or when the weights are constant. The default uses survey-weighted quantiles, which <code>Hmisc</code> has no equivalent of.</li>
+<li>
+<strong>except at n = 9 with 4 or 5 knots</strong>, where the order-statistic replacements collide with the interior knots. <code>Hmisc</code> silently returns three knots; this package raises an error. Returning fewer knots than were requested fits a different model than the caller asked for, and doing that quietly is the behaviour 0.6.4 set out to remove. n = 8, 12 and 20 agree exactly.</li>
+</ul><p>The claim that the two bases “agree to about 1e-14, so results are unchanged” has been removed. It is true of the fit and misleading about everything downstream.</p>
+</div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.4" id="svyrcs-064">svyrcs 0.6.4<a class="anchor" aria-label="anchor" href="#svyrcs-064"></a></h2>
 <p>A second independent audit, run as a three-round adversarial exchange rather than a single report. Six defects confirmed, one recorded open, two refuted, and one withdrawn after the auditor argued against its own finding. Every claim was reproduced locally before it was accepted.</p>
@@ -131,7 +158,7 @@
 <p>This is the same class of defect as the missing-data one fixed in 0.5.0. The rule now is that the analytic sample is <em>taken from</em> an evaluated model frame rather than reconstructed alongside one.</p>
 </li>
 <li><p><strong><code>subset</code> is refused</strong> rather than accepted through <code>...</code> and applied after the knots were already chosen. Subset the design instead: <code>svyrcs(f, design = subset(design, cond))</code>.</p></li>
-<li><p><strong><code><a href="../reference/rcs.html">svyrcs::rcs()</a></code> now freezes its knots for direct model prediction.</strong> <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> matched the bare name only, so <code>lm(y ~ svyrcs::rcs(x, 4))</code> re-derived knots from <code>newdata</code>: a model trained on an exposure of 1–100 evaluated a prediction grid near 1000 using knots near 1000. This was a regression from 0.5.0, which taught <code><a href="../reference/svyrcs.html">svyrcs()</a></code> to recognise the namespaced form but left the <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> method behind. <code><a href="../reference/svyrcs.html">svyrcs()</a></code> itself was never affected, since it inlines knots before fitting — which is precisely why 786 tests missed it.</p></li>
+<li><p><strong><code>svyrcs::rcs()</code> now freezes its knots for direct model prediction.</strong> <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> matched the bare name only, so <code>lm(y ~ svyrcs::rcs(x, 4))</code> re-derived knots from <code>newdata</code>: a model trained on an exposure of 1–100 evaluated a prediction grid near 1000 using knots near 1000. This was a regression from 0.5.0, which taught <code><a href="../reference/svyrcs.html">svyrcs()</a></code> to recognise the namespaced form but left the <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> method behind. <code><a href="../reference/svyrcs.html">svyrcs()</a></code> itself was never affected, since it inlines knots before fitting — which is precisely why 786 tests missed it.</p></li>
 <li><p><strong>A named reference on a multiply imputed fit is resolved the way it was at fitting time.</strong> <code>fit_design()</code> returned <code>NULL</code> for a pooled fit, so <code>predict(fit, ref = "median")</code> fell back to an unweighted quantile of the first imputation. Evaluated at the reference the fit was anchored to, it returned -0.0881 instead of 0. The component designs are now reachable, read back from the fits rather than stored again, so the pooled object is the same size as before.</p></li>
 </ul></div>
     <div class="section level2">
@@ -254,7 +281,7 @@
 <ul><li>
 <code><a href="../reference/svyrcs.html">svyrcs()</a></code> fits a restricted cubic spline model to a complex survey design and returns the exposure-response curve, tests and reference value in a single object. Survey-weighted Cox (<code>svycoxph</code>) and generalised linear (<code>svyglm</code>) models are supported, giving hazard ratios, odds ratios, rate ratios or mean differences.</li>
 <li>
-<code><a href="../reference/rcs.html">rcs()</a></code> builds a restricted cubic spline basis for use inside a model formula. Knots are stored on the basis and reused by <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> through a <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> method, so predictions can never be made on silently re-derived knots. The basis is numerically identical to <code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code>.</li>
+<code>rcs()</code> builds a restricted cubic spline basis for use inside a model formula. Knots are stored on the basis and reused by <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> through a <code><a href="https://rdrr.io/r/stats/makepredictcall.html" class="external-link">makepredictcall()</a></code> method, so predictions can never be made on silently re-derived knots. The basis is numerically identical to <code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code>.</li>
 <li>
 <code><a href="../reference/svyrcs_curve.html">svyrcs_curve()</a></code> estimates a curve from any already-fitted survey model.</li>
 <li>Curves are estimated as contrasts against a reference value, so covariates cancel exactly and no covariate reference grid is needed. Confidence intervals use a <em>t</em> quantile on the survey degrees of freedom from <code><a href="https://rdrr.io/pkg/survey/man/svychisq.html" class="external-link">survey::degf()</a></code>.</li>

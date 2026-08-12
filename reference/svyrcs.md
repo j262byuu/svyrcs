@@ -28,12 +28,12 @@ svyrcs(
 - formula:
 
   A model formula containing exactly one
-  [`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) term for
-  the exposure, plus any covariates. A
+  [`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+  term for the exposure, plus any covariates. A
   [`Surv()`](https://rdrr.io/pkg/survival/man/Surv.html) response
   selects a survey-weighted Cox model; anything else is fitted with
   [`survey::svyglm()`](https://rdrr.io/pkg/survey/man/svyglm.html).
-  Crossing the spline with a grouping variable, `rcs(x, 4) * sex`,
+  Crossing the spline with a grouping variable, `rcspline(x, 4) * sex`,
   estimates one curve per group and tests whether they differ; see the
   section below.
 
@@ -155,11 +155,11 @@ An object of class `svyrcs`, a list with components:
 ## Subgroups and effect modification
 
 Writing the exposure crossed with a grouping variable,
-`rcs(bmi, 4) * sex`, fits **one** model and returns one curve per level
-of the modifier. Because it is a single model, the covariate effects are
-shared across groups and a genuine interaction test is available;
-fitting each subgroup separately gives neither. `sex * rcs(bmi, 4)` is
-equivalent.
+`rcspline(bmi, 4) * sex`, fits **one** model and returns one curve per
+level of the modifier. Because it is a single model, the covariate
+effects are shared across groups and a genuine interaction test is
+available; fitting each subgroup separately gives neither.
+`sex * rcspline(bmi, 4)` is equivalent.
 
 The modifier must be a factor, character or logical variable; ordered
 factors and other contrast codings are handled, because group curves are
@@ -286,8 +286,8 @@ ordinary design, replicate-weight variance for a replicate design.
 
 [`svyrcs_curve()`](https://j262byuu.github.io/svyrcs/reference/svyrcs_curve.md)
 for curves from a model you fitted yourself,
-[`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) for the
-basis,
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+for the basis,
 [references](https://j262byuu.github.io/svyrcs/reference/references.md)
 for reference values.
 
@@ -300,7 +300,7 @@ design <- survey::svydesign(
 )
 
 # continuous outcome: mean difference in total cholesterol across the BMI range
-fit <- svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+fit <- svyrcs(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 fit
 #> Restricted cubic spline on a complex survey design
 #> 
@@ -317,7 +317,7 @@ fit
 # survival outcome: all-cause mortality, anchored at the minimum-risk BMI
 # \donttest{
 library(survival)
-fit_hr <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex,
+fit_hr <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) + age + sex,
                  design = design, ref = "min")
 summary(fit_hr)
 #> Restricted cubic spline on a complex survey design
@@ -342,11 +342,11 @@ plot(fit_hr)
 
 
 # binary outcome: odds of high total cholesterol
-fit_or <- svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
+fit_or <- svyrcs(high_chol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design,
                  family = quasibinomial())
 
 # one curve per subgroup, with a test of whether they differ
-fit_by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+fit_by_sex <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) * sex + age, design = design)
 fit_by_sex$tests$interaction$p_F
 #> [1] 0.4796278
 plot(fit_by_sex)

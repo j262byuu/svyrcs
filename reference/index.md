@@ -14,8 +14,8 @@ the reference.
 
 Building and inspecting the restricted cubic spline basis.
 
-- [`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) :
-  Restricted cubic spline basis
+- [`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+  : Restricted cubic spline basis
 - [`rcs_knots()`](https://j262byuu.github.io/svyrcs/reference/rcs_knots.md)
   : Knot locations for a restricted cubic spline
 - [`makepredictcall(`*`<svyrcs_basis>`*`)`](https://j262byuu.github.io/svyrcs/reference/makepredictcall.svyrcs_basis.md)

@@ -1,5 +1,84 @@
 # Changelog
 
+## svyrcs 0.7.0
+
+### Breaking: `rcs()` is now `rcspline()`
+
+The spline function has been renamed. **Every formula must be updated**;
+the old name raises an error that says so.
+
+``` r
+
+svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age, design = design)   # was rcs(bmi, 4)
+```
+
+`rcs()` collided with
+[`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html), and R
+resolves that by masking whichever package was attached first. The
+collision could not be made safe, and the reason is worth stating
+because it is not the obvious one:
+
+- A `cph()`, `lrm()` or `ols()` model written with a bare `rcs()` while
+  `svyrcs` was attached picked up **this** basis. It fitted correctly –
+  coefficients and fitted values identical to
+  [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) to 1e-16 –
+  and then **silently lost the `Nonlinear` row from
+  [`anova()`](https://rdrr.io/r/stats/anova.html)**. That row is usually
+  the reason for fitting a spline at all. No error, no warning, and the
+  only visible sign was in `print(fit)`, which a user working from
+  [`anova()`](https://rdrr.io/r/stats/anova.html) never sees.
+- [`rms::Predict()`](https://rdrr.io/pkg/rms/man/Predict.html) failed
+  outright on such a model, which pushes a user further toward reading
+  [`anova()`](https://rdrr.io/r/stats/anova.html) alone.
+- Two spline terms in one `rms` model produced duplicate column names
+  and were rejected by
+  [`rms::Design()`](https://rdrr.io/pkg/rms/man/rms.html) – so nothing
+  was ever misattributed, but the safety was upstream, not ours, and the
+  error message blamed factor levels.
+- In the other direction, attaching `rms` after `svyrcs` made every
+  [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)
+  call fail with a message telling the user to refit with
+  [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md),
+  which is what they were doing.
+
+Documenting an attach order was considered and rejected: a convention
+only protects people who already know about the conflict, and the people
+at risk are the ones writing a bare `rcs()` because that is what
+Harrell’s book, the `rms` vignettes and every existing script use.
+
+Renaming now costs nothing – the package is not on CRAN and has no
+downstream users. After acceptance it would be a breaking change
+requiring a deprecation cycle.
+
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+in an `rms` model still fits and still loses the `Nonlinear` test,
+because the basis carries this package’s knot attributes rather than
+`rms`’s design attributes. That is documented in
+[`?rcspline`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+and pinned by a test, so a change in either package’s behaviour surfaces
+rather than drifts. Making it fail loudly instead is under evaluation.
+
+### Knot-placement equivalence, stated precisely
+
+[`rcs_knots()`](https://j262byuu.github.io/svyrcs/reference/rcs_knots.md)
+reproduces
+[`Hmisc::rcspline.eval()`](https://rdrr.io/pkg/Hmisc/man/rcspline.eval.html)
+– with limits now written down rather than implied:
+
+- only when `weighted_knots = FALSE`, or when the weights are constant.
+  The default uses survey-weighted quantiles, which `Hmisc` has no
+  equivalent of.
+- **except at n = 9 with 4 or 5 knots**, where the order-statistic
+  replacements collide with the interior knots. `Hmisc` silently returns
+  three knots; this package raises an error. Returning fewer knots than
+  were requested fits a different model than the caller asked for, and
+  doing that quietly is the behaviour 0.6.4 set out to remove. n = 8, 12
+  and 20 agree exactly.
+
+The claim that the two bases “agree to about 1e-14, so results are
+unchanged” has been removed. It is true of the fit and misleading about
+everything downstream.
+
 ## svyrcs 0.6.4
 
 A second independent audit, run as a three-round adversarial exchange
@@ -258,8 +337,7 @@ to show it. **Results change** for the affected cases.
   after the knots were already chosen. Subset the design instead:
   `svyrcs(f, design = subset(design, cond))`.
 
-- **[`svyrcs::rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md)
-  now freezes its knots for direct model prediction.**
+- **`svyrcs::rcs()` now freezes its knots for direct model prediction.**
   [`makepredictcall()`](https://rdrr.io/r/stats/makepredictcall.html)
   matched the bare name only, so `lm(y ~ svyrcs::rcs(x, 4))` re-derived
   knots from `newdata`: a model trained on an exposure of 1–100
@@ -598,9 +676,8 @@ First release.
   single object. Survey-weighted Cox (`svycoxph`) and generalised linear
   (`svyglm`) models are supported, giving hazard ratios, odds ratios,
   rate ratios or mean differences.
-- [`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) builds a
-  restricted cubic spline basis for use inside a model formula. Knots
-  are stored on the basis and reused by
+- `rcs()` builds a restricted cubic spline basis for use inside a model
+  formula. Knots are stored on the basis and reused by
   [`predict()`](https://rdrr.io/r/stats/predict.html) through a
   [`makepredictcall()`](https://rdrr.io/r/stats/makepredictcall.html)
   method, so predictions can never be made on silently re-derived knots.

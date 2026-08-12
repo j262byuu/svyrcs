@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">svyrcs</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -45,21 +45,26 @@
 
 
 <p>Build a survey design with <code><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">survey::svydesign()</a></code>, then call <code><a href="svyrcs.html">svyrcs()</a></code> with a model formula
-containing one <code><a href="rcs.html">rcs()</a></code> term:</p>
+containing one <code><a href="rcspline.html">rcspline()</a></code> term:</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">design</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/survey/man/svydesign.html" class="external-link">svydesign</a></span><span class="op">(</span>id <span class="op">=</span> <span class="op">~</span><span class="va">psu</span>, strata <span class="op">=</span> <span class="op">~</span><span class="va">strata</span>, weights <span class="op">=</span> <span class="op">~</span><span class="va">weight</span>,</span>
 <span>                    nest <span class="op">=</span> <span class="cn">TRUE</span>, data <span class="op">=</span> <span class="va">nhanes_bmi</span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcs.html">rcs</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/svyrcs.html">svyrcs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/survival/man/Surv.html" class="external-link">Surv</a></span><span class="op">(</span><span class="va">time</span>, <span class="va">event</span><span class="op">)</span> <span class="op">~</span> <span class="fu"><a href="../reference/rcspline.html">rcspline</a></span><span class="op">(</span><span class="va">bmi</span>, <span class="fl">4</span><span class="op">)</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">sex</span>, design <span class="op">=</span> <span class="va">design</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre><p></p></div>
     </div>
     <div class="section level2">
-    <h2 id="note-on-masking">Note on masking<a class="anchor" aria-label="anchor" href="#note-on-masking"></a></h2>
+    <h2 id="using-this-package-alongside-rms">Using this package alongside <code>rms</code><a class="anchor" aria-label="anchor" href="#using-this-package-alongside-rms"></a></h2>
 
 
-<p><code>svyrcs</code> exports a function called <code><a href="rcs.html">rcs()</a></code>, which masks <code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code> when both packages are
-attached. The two produce numerically identical bases (agreement to about 1e-14), so the masking
-does not change any result. It does add knot storage, which is what makes <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> on new data
-safe. See <code><a href="rcs.html">rcs()</a></code>.</p>
+<p>The spline function here is <code><a href="rcspline.html">rcspline()</a></code>. It was called <code>rcs()</code> before 0.7.0, which masked
+<code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code> whenever both packages were attached; the name was changed because that masking could
+not be made safe. A <code>cph()</code>, <code>lrm()</code> or <code>ols()</code> model written with a bare <code>rcs()</code> would silently
+pick up this basis, fit correctly, and then lose the <code>Nonlinear</code> row from <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code> – with no
+error and no warning, and that row is usually the reason for fitting a spline at all.</p>
+<p>Since the rename there is no collision, and no attach order to remember. Use <code><a href="https://rdrr.io/pkg/rms/man/rms.trans.html" class="external-link">rms::rcs()</a></code> in <code>rms</code>
+models and <code><a href="rcspline.html">rcspline()</a></code> here. Note that the converse is not symmetric: passing <code><a href="rcspline.html">rcspline()</a></code> into an
+<code>rms</code> model still fits and still loses the <code>Nonlinear</code> test, because the basis carries this
+package's knot attributes rather than <code>rms</code>'s design attributes.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

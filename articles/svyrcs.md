@@ -82,13 +82,13 @@ strata, and the intervals have to reflect that.
 ## A first model
 
 One call. The exposure enters through
-[`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md);
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md);
 everything else is an ordinary model formula.
 
 ``` r
 
 fit <- svyrcs(
-  Surv(time, event) ~ rcs(bmi, 4) + age + sex + race,
+  Surv(time, event) ~ rcspline(bmi, 4) + age + sex + race,
   design = design
 )
 fit
@@ -198,7 +198,7 @@ the curve without changing its shape or either *p*-value.
 
 fits <- lapply(
   c("median", "min", "max"),
-  function(r) svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex,
+  function(r) svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age + sex,
                      design = design, ref = r)
 )
 vapply(fits, function(f) f$ref$value, numeric(1))
@@ -233,7 +233,7 @@ changes.
 ``` r
 
 # binary outcome: odds ratio
-svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
+svyrcs(high_chol ~ rcspline(bmi, 4) + age + sex, design = design,
        family = quasibinomial())
 #> Restricted cubic spline on a complex survey design
 #> 
@@ -248,7 +248,7 @@ svyrcs(high_chol ~ rcs(bmi, 4) + age + sex, design = design,
 #>   Non-linearity        F = 28.06 on 2 and 31 df,  p = 1.11e-07
 
 # continuous outcome: mean difference
-svyrcs(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+svyrcs(tchol ~ rcspline(bmi, 4) + age + sex, design = design)
 #> Restricted cubic spline on a complex survey design
 #> 
 #>   Model      survey-weighted GLM (gaussian, identity link)
@@ -275,7 +275,7 @@ Cross the spline with a grouping variable and
 
 ``` r
 
-by_sex <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) * sex + age, design = design)
+by_sex <- svyrcs(Surv(time, event) ~ svyrcs::rcspline(bmi, 4) * sex + age, design = design)
 by_sex
 #> Restricted cubic spline on a complex survey design
 #> 
@@ -368,7 +368,7 @@ mi_design <- svydesign(
   nest = TRUE, data = imputationList(completed)
 )
 
-fit_mi <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex + tchol, design = mi_design)
+fit_mi <- svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age + sex + tchol, design = mi_design)
 fit_mi
 #> Restricted cubic spline on a complex survey design
 #> 
@@ -455,9 +455,9 @@ the cost of stability.
 
 fit$knots
 #> [1] 19.78 25.22 29.71 40.67
-svyrcs(Surv(time, event) ~ rcs(bmi, 5) + age, design = design)$knots
+svyrcs(Surv(time, event) ~ rcspline(bmi, 5) + age, design = design)$knots
 #> [1] 19.78 24.13 27.35 31.22 40.67
-svyrcs(Surv(time, event) ~ rcs(bmi, c(20, 25, 30, 40)) + age, design = design)$knots
+svyrcs(Surv(time, event) ~ rcspline(bmi, c(20, 25, 30, 40)) + age, design = design)$knots
 #> [1] 20 25 30 40
 ```
 
@@ -486,7 +486,7 @@ fit it yourself and hand it over:
 
 ``` r
 
-m <- svycoxph(Surv(time, event) ~ rcs(bmi, 4) + age + strata(sex), design = design)
+m <- svycoxph(Surv(time, event) ~ rcspline(bmi, 4) + age + strata(sex), design = design)
 head(svyrcs_curve(m, "bmi", ref = "min", n = 5))
 #>         x estimate conf.low conf.high         se
 #> 1 17.8500 2.849643 2.169771  3.742544 0.13364554

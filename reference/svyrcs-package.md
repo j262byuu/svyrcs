@@ -18,24 +18,37 @@ Build a survey design with
 then call
 [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md) with
 a model formula containing one
-[`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) term:
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+term:
 
     design <- svydesign(id = ~psu, strata = ~strata, weights = ~weight,
                         nest = TRUE, data = nhanes_bmi)
-    fit <- svyrcs(Surv(time, event) ~ rcs(bmi, 4) + age + sex, design = design)
+    fit <- svyrcs(Surv(time, event) ~ rcspline(bmi, 4) + age + sex, design = design)
     summary(fit)
     plot(fit)
 
-## Note on masking
+## Using this package alongside `rms`
 
-`svyrcs` exports a function called
-[`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md), which
-masks [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) when
-both packages are attached. The two produce numerically identical bases
-(agreement to about 1e-14), so the masking does not change any result.
-It does add knot storage, which is what makes
-[`predict()`](https://rdrr.io/r/stats/predict.html) on new data safe.
-See [`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md).
+The spline function here is
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md).
+It was called `rcs()` before 0.7.0, which masked
+[`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) whenever both
+packages were attached; the name was changed because that masking could
+not be made safe. A `cph()`, `lrm()` or `ols()` model written with a
+bare `rcs()` would silently pick up this basis, fit correctly, and then
+lose the `Nonlinear` row from
+[`anova()`](https://rdrr.io/r/stats/anova.html) – with no error and no
+warning, and that row is usually the reason for fitting a spline at all.
+
+Since the rename there is no collision, and no attach order to remember.
+Use [`rms::rcs()`](https://rdrr.io/pkg/rms/man/rms.trans.html) in `rms`
+models and
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+here. Note that the converse is not symmetric: passing
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+into an `rms` model still fits and still loses the `Nonlinear` test,
+because the basis carries this package's knot attributes rather than
+`rms`'s design attributes.
 
 ## See also
 

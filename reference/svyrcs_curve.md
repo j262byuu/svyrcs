@@ -1,9 +1,9 @@
 # Exposure-response curve from a fitted survey model
 
 Estimates the exposure-response curve implied by an
-[`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) term in an
-already-fitted survey model, as a contrast against a reference exposure
-value.
+[`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+term in an already-fitted survey model, as a contrast against a
+reference exposure value.
 [`svyrcs()`](https://j262byuu.github.io/svyrcs/reference/svyrcs.md)
 calls this internally; use it directly when you have fitted the model
 yourself, for instance because you need a model specification
@@ -34,8 +34,8 @@ svyrcs_curve(
 - fit:
 
   A fitted model containing an
-  [`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md) term,
-  typically from
+  [`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
+  term, typically from
   [`survey::svycoxph()`](https://rdrr.io/pkg/survey/man/svycoxph.html)
   or [`survey::svyglm()`](https://rdrr.io/pkg/survey/man/svyglm.html).
   Any model with [`coef()`](https://rdrr.io/r/stats/coef.html),
@@ -45,7 +45,8 @@ svyrcs_curve(
 - var:
 
   Name of the exposure. Only needed when the model contains more than
-  one [`rcs()`](https://j262byuu.github.io/svyrcs/reference/rcs.md)
+  one
+  [`rcspline()`](https://j262byuu.github.io/svyrcs/reference/rcspline.md)
   term.
 
 - ref:
@@ -132,7 +133,7 @@ design <- survey::svydesign(
   id = ~psu, strata = ~strata, weights = ~weight,
   nest = TRUE, data = nhanes_bmi
 )
-fit <- survey::svyglm(tchol ~ rcs(bmi, 4) + age + sex, design = design)
+fit <- survey::svyglm(tchol ~ svyrcs::rcspline(bmi, 4) + age + sex, design = design)
 curve <- svyrcs_curve(fit, "bmi", n = 20)
 head(curve)
 #>          x   estimate   conf.low   conf.high        se
