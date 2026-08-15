@@ -74,8 +74,8 @@ guarded with `skip_if_not_installed()`.
 `Imports` is limited to `rlang`, `stats` and `survey (>= 4.0)` — 11 packages to install, counting
 their recursive dependencies and excluding the base packages that ship with R (18 including them).
 
-`ggplot2`, `haven`, `Hmisc`, `knitr`, `mice`, `mitml`, `mitools`,
-`rmarkdown`, `rms`, `survival` and `testthat` are in `Suggests` and are used only where guarded.
+`ggplot2`, `haven`, `Hmisc`, `knitr`, `mice`, `mitml`, `mitools`, `rmarkdown`, `rms`, `survival`
+and `testthat` are in `Suggests` and are used only where guarded; none is used at run time.
 
 `ggplot2` is suggested rather than imported even though plotting is a headline feature: `plot()`
 falls back to an equivalent base graphics implementation when ggplot2 is absent, so nothing is lost.
@@ -85,11 +85,6 @@ The `autoplot()` method is attached to `ggplot2::autoplot` by delayed S3 registr
 A dedicated continuous integration job installs only the hard dependencies plus what the test suite
 itself needs, and asserts that ggplot2 really is absent before running, so the base graphics fallback
 is exercised in a real environment rather than only under mocking.
-
-`Hmisc` and `rms` are suggested purely so that the test suite can check this package's spline basis
-and knot placement against Harrell's reference implementation; neither is used at run time. The
-package deliberately does not depend on `rms`, even though it implements the same spline basis: the
-two agree to about 1e-14, and avoiding the dependency also avoids `rms`'s `datadist` global option.
 
 ## Relationship to `rms`
 
